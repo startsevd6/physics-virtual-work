@@ -10,9 +10,19 @@
             <strong>{{ c.label }}</strong>
             <div style="font-size:12px">{{ c.desc }}</div>
           </div>
-          <div class="panel temperature">
+          <div
+              class="panel temperature"
+              @wheel.prevent="handleWheelScroll"
+              style="cursor: ew-resize;"
+          >
             <label>Температура (K)</label>
-            <input type="range" min="290" max="380" v-model.number="globalTemp"/>
+            <input
+                type="range"
+                min="290"
+                max="380"
+                v-model.number="globalTemp"
+                @wheel.prevent="handleWheelScroll"
+            />
             <div>{{ globalTemp }} K</div>
           </div>
         </div>
@@ -167,6 +177,22 @@ export default defineComponent({
       snapshots.value = []
     }
 
+    function handleWheelScroll(event: WheelEvent) {
+      const delta = Math.sign(event.deltaY) * -1 // Инвертируем, чтобы прокрутка вверх увеличивала значение
+      const step = 1 // Шаг изменения температуры
+
+      let newTemp = globalTemp.value + (delta * step)
+
+      // Ограничиваем значение в диапазоне 290-380
+      if (newTemp < 290) newTemp = 290
+      if (newTemp > 380) newTemp = 380
+
+      globalTemp.value = newTemp
+
+      // Предотвращаем прокрутку страницы
+      event.preventDefault()
+    }
+
     function slotStyle(s: Slot): Record<string, string> {
       return {
         position: 'absolute',
@@ -233,7 +259,8 @@ export default defineComponent({
       resetBoard,
       removeFromSlot,
       slotStyle,
-      formatSnapshot
+      formatSnapshot,
+      handleWheelScroll,
     }
   }
 })
