@@ -208,9 +208,8 @@ export default defineComponent({
     function saveSnapshot() {
       const source = slots[0]?.item
       const sample = slots[1]?.item
-      const ammeter = slots[1]?.item
-      console.log(source, sample, ammeter);
-      if (!source || !sample || !ammeter) {
+      const ammeter = slots[2]?.item
+      if (!source || !sample) {
         alert("Схема собрана не полностью!")
         return;
       }
@@ -233,18 +232,29 @@ export default defineComponent({
         }
       }
 
-      const I = (Rsample && !isNaN(Rsample) && Rsample > 0) ? V / Rsample : 0
-      snapshots.value.push({
-        time: new Date().toISOString(),
-        V: V.toFixed(3),
-        I: I.toFixed(6),
-        R: isNaN(Rsample) ? '—' : Rsample.toFixed(6),
-        T
-      })
+      if (ammeter) {
+        const I = (Rsample && !isNaN(Rsample) && Rsample > 0) ? V / Rsample : 0
+        snapshots.value.push({
+          time: new Date().toISOString(),
+          V: V.toFixed(3),
+          I: I.toFixed(6),
+          R: isNaN(Rsample) ? '—' : Rsample.toFixed(6),
+          T
+        });
+      } else {
+        snapshots.value.push({
+          time: new Date().toISOString(),
+          V: V.toFixed(3),
+          R: isNaN(Rsample) ? '—' : Rsample.toFixed(6),
+          T
+        });
+      }
     }
 
     function formatSnapshot(s: any) {
-      return `V=${s.V} В, I=${Number(s.I)} А, R=${Number(s.R).toFixed(2)} Ω, T=${s.T} K`
+      return s.I
+          ? `V=${s.V} В, I=${Number(s.I)} А, R=${Number(s.R).toFixed(2)} Ω, T=${s.T} K`
+          : `V=${s.V} В, R=${Number(s.R).toFixed(2)} Ω, T=${s.T} K`
     }
 
     return {
