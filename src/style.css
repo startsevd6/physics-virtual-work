@@ -89,9 +89,14 @@ li {
 }
 
 .components .panel:not(:last-child) {
-    background-color: #222;
     padding: 8px;
     border-radius: 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+    .components .panel {
+        background-color: #222;
+    }
 }
 
 @media (prefers-color-scheme: light) {
