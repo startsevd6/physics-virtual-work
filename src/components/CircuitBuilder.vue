@@ -1,4 +1,10 @@
 <template>
+  <ErrorPopup
+      v-if="showError"
+      :message="errorMessage"
+      @close="showError = false"
+  />
+
   <div>
     <h2>Сборка схемы (2D)</h2>
     <div class="circuit-assembly">
@@ -63,6 +69,7 @@ import {defineComponent, reactive, ref} from 'vue'
 import ThermistorComponent from './parts/Thermistor.vue'
 import SourceComponent from './parts/VoltageSource.vue'
 import AmmeterComponent from './parts/Ammeter.vue'
+import ErrorPopup from './ErrorPopup.vue'
 import "../style.css";
 
 type Slot = { label: string, x: number, y: number, w: number, h: number, item: null | { component: any, data: any } }
@@ -76,7 +83,13 @@ const componentMap: Record<string, any> = {
 }
 
 export default defineComponent({
-  components: {ThermistorComponent, SourceComponent, AmmeterComponent},
+  components: {
+    ThermistorComponent,
+    SourceComponent,
+    AmmeterComponent,
+    ErrorPopup,
+  },
+
   setup() {
     const components = [
       {type: 'source', label: 'Источник напряжения', desc: 'Источник питания 0–15 В'},
@@ -92,6 +105,8 @@ export default defineComponent({
 
     let globalTemp = ref(300)
     const supplyVoltage = ref(0)
+    const showError = ref(false)
+    const errorMessage = ref('')
 
     const slots = reactive<Slot[]>([
       {label: 'Слот: Источник', x: 20, y: 20, w: 180, h: 60, item: null},
@@ -100,6 +115,11 @@ export default defineComponent({
     ])
 
     const snapshots = ref<any[]>([])
+
+    function showErrorPopup(message: string) {
+      errorMessage.value = message
+      showError.value = true
+    }
 
     function onDragStart(e: DragEvent, c: any) {
       // Передаем только тип и метаданные, не сам компонент
@@ -135,7 +155,7 @@ export default defineComponent({
       });
 
       if (existingSameType) {
-        alert('Такой компонент уже добавлен в схему!')
+        showErrorPopup('Такой компонент уже добавлен в схему!')
         return;
       }
 
@@ -144,17 +164,17 @@ export default defineComponent({
 
       // Проверка для каждого слота
       if (slotIndex === 0 && type !== 'source') {
-        alert('В этот слот можно добавить только источник напряжения')
+        showErrorPopup('В этот слот можно добавить только источник напряжения')
         return
       }
 
       if (slotIndex === 1 && !['therm-met', 'therm-sem'].includes(type)) {
-        alert('В этот слот можно добавить только терморезистор (металлический или полупроводниковый)')
+        showErrorPopup('В этот слот можно добавить только терморезистор (металлический или полупроводниковый)')
         return
       }
 
       if (slotIndex === 2 && type !== 'amm') {
-        alert('В этот слот можно добавить только амперметр')
+        showErrorPopup('В этот слот можно добавить только амперметр')
         return
       }
 
@@ -210,7 +230,7 @@ export default defineComponent({
       const sample = slots[1]?.item
       const ammeter = slots[2]?.item
       if (!source || !sample) {
-        alert("Схема собрана не полностью!")
+        showErrorPopup("Схема собрана не полностью!")
         return;
       }
 
@@ -271,6 +291,9 @@ export default defineComponent({
       slotStyle,
       formatSnapshot,
       handleWheelScroll,
+      showError,
+      errorMessage,
+      showErrorPopup
     }
   }
 })
