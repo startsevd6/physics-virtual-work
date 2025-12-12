@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, defineProps, defineEmits, watch } from 'vue';
+import { ref, defineProps, defineEmits, watch, onUnmounted } from 'vue';
 
 const props = defineProps<{
   message: string
@@ -35,15 +35,39 @@ function closePopup() {
   emit('close');
 }
 
+// Функция для обработки нажатия клавиш
+function handleKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && visible.value) {
+    closePopup();
+  }
+}
+
 // Автоматически закрыть через 5 секунд
 watch(visible, (newVal) => {
   if (newVal) {
-    setTimeout(() => {
+    // Добавляем обработчик нажатия клавиш
+    document.addEventListener('keydown', handleKeydown);
+
+    // Устанавливаем таймер для автоматического закрытия
+    const timer = setTimeout(() => {
       if (visible.value) {
         closePopup();
       }
     }, 5000);
+
+    // Функция для очистки
+    return () => {
+      clearTimeout(timer);
+    };
+  } else {
+    // Удаляем обработчик нажатия клавиш
+    document.removeEventListener('keydown', handleKeydown);
   }
+}, { immediate: true });
+
+// Убедимся, что обработчик удаляется при размонтировании компонента
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown);
 });
 </script>
 
