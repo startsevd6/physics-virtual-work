@@ -9,7 +9,7 @@
       </div>
       <div style="margin-top:6px;font-size:12px;color:#667085">
         <div v-if="isMetal">
-          alpha: <input v-model.number="local.alpha"/>
+          α: <input v-model.number="local.alpha"/>
         </div>
         <div v-else>
           B: <input v-model.number="local.B"/>
@@ -24,7 +24,7 @@
 
 
 <script lang="ts">
-import {defineComponent, reactive} from 'vue'
+import {defineComponent, reactive, watch} from 'vue'
 
 export default defineComponent({
   props: {data: {type: Object, required: true}},
@@ -33,12 +33,20 @@ export default defineComponent({
       R0: props.data.R0 ?? (props.data.kind === 'metal' ? 100 : 1000),
       alpha: props.data.alpha ?? 0.0039,
       B: props.data.B ?? 3500
-    })
-// keep props.data in sync when changed
-    Object.assign(props.data, local)
-    const isMetal = props.data.kind === 'metal'
-    const kindLabel = isMetal ? 'Металлический терморезистор' : 'Полупроводниковый терморезистор'
-    return {local, isMetal, kindLabel}
+    });
+
+    // Синхронизация изменений local с props.data
+    watch(
+        () => ({...local}),
+        (newVal) => {
+          Object.assign(props.data, newVal)
+        },
+        {deep: true, immediate: true}
+    );
+
+    const isMetal = props.data.kind === 'metal';
+    const kindLabel = isMetal ? 'Металлический терморезистор' : 'Полупроводниковый терморезистор';
+    return {local, isMetal, kindLabel};
   }
 })
 </script>
