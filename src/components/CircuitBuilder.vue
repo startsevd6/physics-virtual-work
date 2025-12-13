@@ -40,7 +40,7 @@
              style="height:340px;min-width:670px;border:2px dashed #d6dde7;border-radius:6px;padding:12px;position:relative;background:#fbfdff">
           <div v-for="(slot,idx) in slots" :key="idx" :style="slotStyle(slot)" class="slot">
             <div v-if="slot.item">
-              <component :is="slot.item.component" :ref="slot.item.component" :data="slot.item.data"
+              <component :is="slot.item.component" :data="slot.item.data"
                          @remove="() => removeFromSlot(idx)"/>
             </div>
             <div v-else style="font-size:12px;color:#7b8592">{{ slot.label }}</div>
@@ -65,7 +65,7 @@
 </template>
 
 <script lang="ts">
-import {defineComponent, reactive, ref} from 'vue'
+import {defineComponent, reactive, ref, markRaw} from 'vue'
 import ThermistorComponent from './parts/Thermistor.vue'
 import SourceComponent from './parts/VoltageSource.vue'
 import AmmeterComponent from './parts/Ammeter.vue'
@@ -76,10 +76,10 @@ type Slot = { label: string, x: number, y: number, w: number, h: number, item: n
 
 // Маппинг типов компонентов на их реализации
 const componentMap: Record<string, any> = {
-  'source': SourceComponent,
-  'therm-sem': ThermistorComponent,
-  'therm-met': ThermistorComponent,
-  'amm': AmmeterComponent
+  'source': markRaw(SourceComponent),
+  'therm-sem': markRaw(ThermistorComponent),
+  'therm-met': markRaw(ThermistorComponent),
+  'amm': markRaw(AmmeterComponent)
 }
 
 export default defineComponent({
