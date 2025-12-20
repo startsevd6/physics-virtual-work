@@ -8,7 +8,7 @@
         <button class="close-btn" @click="closePopup">×</button>
       </div>
       <div class="error-content">
-        <p>{{ message }}</p>
+        <p>{{ props.message }}</p>
       </div>
       <div class="error-footer">
         <button @click="closePopup">OK</button>
