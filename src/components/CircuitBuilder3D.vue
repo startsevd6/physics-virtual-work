@@ -264,7 +264,7 @@ export default defineComponent({
     const slots = reactive<Slot3D[]>([
       {
         label: 'Источник напряжения',
-        position: new THREE.Vector3(-3, 0, 0),
+        position: new THREE.Vector3(-1, 0, 0),
         rotation: new THREE.Euler(0, 0, 0),
         scale: 1.5,
         occupied: false,
@@ -282,7 +282,7 @@ export default defineComponent({
       },
       {
         label: 'Амперметр',
-        position: new THREE.Vector3(3, 0, 0),
+        position: new THREE.Vector3(1, 0, 0),
         rotation: new THREE.Euler(0, Math.PI / 2, 0),
         scale: 1,
         occupied: false,
@@ -374,7 +374,7 @@ export default defineComponent({
       controls.enableDamping = true;
       controls.dampingFactor = 0.05;
       controls.screenSpacePanning = false;
-      controls.minDistance = 5;
+      controls.minDistance = 0.5;
       controls.maxDistance = 30;
       controls.maxPolarAngle = Math.PI / 2;
 
@@ -391,6 +391,7 @@ export default defineComponent({
 
       // Пол
       const gridHelper = new THREE.GridHelper(20, 20, 0x888888, 0xcccccc);
+      gridHelper.position.set(0, -0.17, 0);
       scene.add(gridHelper);
 
       const floorGeometry = new THREE.PlaneGeometry(20, 20);
@@ -401,7 +402,7 @@ export default defineComponent({
       });
       const floor = new THREE.Mesh(floorGeometry, floorMaterial);
       floor.rotation.x = -Math.PI / 2;
-      floor.position.y = -0.5;
+      floor.position.y = -0.175;
       floor.receiveShadow = true;
       scene.add(floor);
 
