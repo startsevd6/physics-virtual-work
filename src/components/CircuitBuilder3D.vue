@@ -53,24 +53,114 @@
           <div v-for="(slot, idx) in slots" :key="idx" class="slot-info">
             <div class="slot-label">{{ slot.label }}</div>
             <div v-if="slot.component" class="slot-content">
+              <!-- Источник напряжения -->
               <div v-if="slot.component.data.type === 'source'">
                 <strong>Источник напряжения</strong>
-                <div>Напряжение: {{ slot.component.data.voltage || 0 }} В</div>
+                <div class="component-params">
+                  <div class="param-row">
+                    <label>Напряжение (В):</label>
+                    <div class="param-controls">
+                      <input
+                          type="range"
+                          min="0"
+                          max="15"
+                          step="0.1"
+                          v-model.number="slot.component.data.voltage"
+                          class="voltage-slider"
+                      />
+                      <input
+                          type="number"
+                          min="0"
+                          max="15"
+                          step="0.1"
+                          v-model.number="slot.component.data.voltage"
+                          class="voltage-input"
+                      />
+                      <span class="param-unit">В</span>
+                    </div>
+                  </div>
+                  <div class="voltage-value">
+                    Текущее значение: {{ slot.component.data.voltage || 0 }} В
+                  </div>
+                </div>
                 <button @click="() => removeComponent3D(slot)">Удалить</button>
               </div>
+
+              <!-- Терморезистор -->
               <div v-else-if="slot.component.data.type === 'therm-met' || slot.component.data.type === 'therm-sem'">
                 <strong>{{ slot.component.data.kind === 'metal' ? 'Металлический' : 'Полупроводниковый' }} терморезистор</strong>
-                <div>R0: {{ slot.component.data.R0 || 100 }} Ω</div>
-                <div v-if="slot.component.data.kind === 'metal'">
-                  α: {{ slot.component.data.alpha || 0.0039 }}
-                </div>
-                <div v-else>
-                  B: {{ slot.component.data.B || 3500 }}
+                <div class="component-params">
+                  <div class="param-row">
+                    <label>R0 (Ω):</label>
+                    <div class="param-controls">
+                      <input
+                          type="number"
+                          min="1"
+                          max="10000"
+                          step="1"
+                          v-model.number="slot.component.data.R0"
+                          class="param-input"
+                      />
+                      <span class="param-unit">Ω</span>
+                    </div>
+                  </div>
+
+                  <div v-if="slot.component.data.kind === 'metal'">
+                    <div class="param-row">
+                      <label>α (1/K):</label>
+                      <div class="param-controls">
+                        <input
+                            type="number"
+                            min="0.001"
+                            max="0.01"
+                            step="0.0001"
+                            v-model.number="slot.component.data.alpha"
+                            class="param-input"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div v-else>
+                    <div class="param-row">
+                      <label>B (K):</label>
+                      <div class="param-controls">
+                        <input
+                            type="number"
+                            min="1000"
+                            max="5000"
+                            step="1"
+                            v-model.number="slot.component.data.B"
+                            class="param-input"
+                        />
+                        <span class="param-unit">K</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="param-info">
+                    <div>Температура: {{ globalTemp }} K</div>
+                    <div>
+                      Текущее сопротивление:
+                      {{ calculateCurrentResistance(slot.component.data).toFixed(2) }} Ω
+                    </div>
+                  </div>
                 </div>
                 <button @click="() => removeComponent3D(slot)">Удалить</button>
               </div>
+
+              <!-- Амперметр -->
               <div v-else-if="slot.component.data.type === 'amm'">
                 <strong>Амперметр</strong>
+                <div class="component-params">
+                  <div class="param-info">
+                    <div v-if="currentI !== null">
+                      Текущий ток: {{ currentI.toFixed(4) }} А
+                    </div>
+                    <div v-else>
+                      Нет данных для расчёта тока
+                    </div>
+                  </div>
+                </div>
                 <button @click="() => removeComponent3D(slot)">Удалить</button>
               </div>
             </div>
@@ -152,11 +242,11 @@ export default defineComponent({
     const sceneContainer = ref<HTMLElement | null>(null);
 
     // Three.js переменные
-    let scene: THREE.Scene;
-    let camera: THREE.PerspectiveCamera;
-    let renderer: THREE.WebGLRenderer;
-    let controls: OrbitControls;
-    let loader: GLTFLoader;
+    let scene: THREE.Scene | null = null;
+    let camera: THREE.PerspectiveCamera | null = null;
+    let renderer: THREE.WebGLRenderer | null = null;
+    let controls: OrbitControls | null = null;
+    let loader: GLTFLoader | null = null;
 
     // Состояние приложения
     const components = [
@@ -210,6 +300,49 @@ export default defineComponent({
       thermistor: new THREE.MeshStandardMaterial({ color: 0x44aaff, metalness: 0.4, roughness: 0.6 }),
       ammeter: new THREE.MeshStandardMaterial({ color: 0x44ff44, metalness: 0.7, roughness: 0.3 })
     };
+
+    // Вычисление текущего сопротивления терморезистора
+    function calculateCurrentResistance(componentData: any): number {
+      if (!componentData) return 0;
+
+      const T = globalTemp.value;
+      const T0 = 300;
+
+      if (componentData.kind === 'metal') {
+        const R0 = componentData.R0 ?? 100;
+        const alpha = componentData.alpha ?? 0.0039;
+        return R0 * (1 + alpha * (T - T0));
+      } else {
+        const R0 = componentData.R0 ?? 1000;
+        const B = componentData.B ?? 3500;
+        return R0 * Math.exp(B * (1 / T - 1 / T0));
+      }
+    }
+
+    // Вычисление текущего тока в цепи
+    function calculateCurrent(): number | null {
+      const sourceSlot = slots[0];
+      const sampleSlot = slots[1];
+
+      if (!sourceSlot?.component || !sampleSlot?.component) {
+        return null;
+      }
+
+      const V = sourceSlot.component.data.voltage || 0;
+      const R = calculateCurrentResistance(sampleSlot.component.data);
+
+      if (R <= 0) return 0;
+
+      return V / R;
+    }
+
+    // Свойство для отображения текущего тока
+    const currentI = ref<number | null>(null);
+
+    // Функция для обновления текущего тока
+    function updateCurrent() {
+      currentI.value = calculateCurrent();
+    }
 
     // Инициализация Three.js сцены
     function initThreeJS() {
@@ -285,13 +418,19 @@ export default defineComponent({
     // Анимационный цикл
     function animate() {
       requestAnimationFrame(animate);
-      controls.update();
-      renderer.render(scene, camera);
+      if (controls) {
+        controls.update();
+      }
+      if (renderer && camera && scene) {
+        renderer.render(scene, camera);
+      }
+      // Обновляем текущий ток
+      updateCurrent();
     }
 
     // Обработка изменения размера окна
     function onWindowResize() {
-      if (!sceneContainer.value) return;
+      if (!sceneContainer.value || !camera || !renderer) return;
 
       camera.aspect = sceneContainer.value.clientWidth / sceneContainer.value.clientHeight;
       camera.updateProjectionMatrix();
@@ -327,7 +466,7 @@ export default defineComponent({
     // Добавление компонента в слот
     async function addComponentToSlot(type: string, meta: any, slotIndex: number) {
       const slot = slots[slotIndex];
-      if (!slot) return false;
+      if (!slot || !scene) return false;
 
       // Проверка допустимости типа
       if (!slot.allowedTypes.includes(type)) {
@@ -353,7 +492,7 @@ export default defineComponent({
       // Загружаем модель или создаем геометрию
       let model: THREE.Object3D;
 
-      if (type === 'amm') {
+      if (type === 'amm' && loader) {
         // Для амперметра пытаемся загрузить GLB
         try {
           const gltf = await loadGLBModel('src/models/ammeter.glb');
@@ -382,10 +521,6 @@ export default defineComponent({
       model.position.copy(slot.position);
       model.rotation.copy(slot.rotation);
 
-      model.scale.set(slot.scale, slot.scale, slot.scale);
-      model.position.copy(slot.position);
-      model.rotation.copy(slot.rotation);
-
       // Анимация появления
       const initialScale = 0.1;
       model.scale.set(initialScale, initialScale, initialScale);
@@ -396,7 +531,7 @@ export default defineComponent({
           .easing(Easing.Elastic.Out)
           .start();
 
-      // Создание объекта компонента
+      // Создание объекта компонента с начальными параметрами
       const component: Component3D = {
         type,
         model,
@@ -419,12 +554,19 @@ export default defineComponent({
       slot.occupied = true;
       slot.component = component;
 
+      // Обновляем ток после добавления компонента
+      updateCurrent();
+
       return true;
     }
 
     // Загрузка GLB модели
     function loadGLBModel(path: string): Promise<any> {
       return new Promise((resolve, reject) => {
+        if (!loader) {
+          reject(new Error('GLTFLoader не инициализирован'));
+          return;
+        }
         loader.load(
             path,
             (gltf) => resolve(gltf),
@@ -436,7 +578,7 @@ export default defineComponent({
 
     // Удаление компонента из сцены
     function removeComponent3D(slot: Slot3D | undefined) {
-      if (!slot || !slot.component) return;
+      if (!slot || !slot.component || !scene) return;
 
       if (slot.component.model) {
         // Сохраняем ссылки на объекты для анимации
@@ -448,14 +590,16 @@ export default defineComponent({
             .to({ x: 0.1, y: 0.1, z: 0.1 }, 300)
             .easing(Easing.Back.In)
             .onComplete(() => {
-              scene.remove(model);
+              scene!.remove(model);
               slotRef.occupied = false;
               slotRef.component = null;
+              updateCurrent();
             })
             .start();
       } else {
         slot.occupied = false;
         slot.component = null;
+        updateCurrent();
       }
     }
 
@@ -505,21 +649,7 @@ export default defineComponent({
 
       const V = sourceSlot.component?.data?.voltage || 0;
       const T = globalTemp.value;
-      let Rsample = NaN;
-
-      if (sampleSlot.component) {
-        const kind = sampleSlot.component.data.kind || 'semiconductor';
-        if (kind === 'metal') {
-          const R0 = sampleSlot.component.data.R0 ?? 100;
-          const alpha = sampleSlot.component.data.alpha ?? 0.0039;
-          Rsample = R0 * (1 + alpha * (T - 300));
-        } else {
-          const R0 = sampleSlot.component.data.R0 ?? 1000;
-          const B = sampleSlot.component.data.B ?? 3500;
-          const T0 = 300;
-          Rsample = R0 * Math.exp(B * (1 / T - 1 / T0));
-        }
-      }
+      let Rsample = calculateCurrentResistance(sampleSlot.component?.data);
 
       const snapshot: any = {
         V: V.toFixed(2),
@@ -528,8 +658,8 @@ export default defineComponent({
       };
 
       if (ammeterSlot && ammeterSlot.occupied) {
-        const I = (Rsample && !isNaN(Rsample) && Rsample > 0) ? V / Rsample : 0;
-        snapshot.I = I.toFixed(2);
+        const I = calculateCurrent();
+        snapshot.I = I !== null ? I.toFixed(4) : '—';
       }
 
       snapshots.value.unshift(snapshot);
@@ -547,9 +677,11 @@ export default defineComponent({
       globalTemp.value = 300;
 
       // Сброс камеры к начальной позиции
-      camera.position.set(0, 8, 15);
-      camera.lookAt(0, 0, 0);
-      controls.update();
+      if (camera && controls) {
+        camera.position.set(0, 8, 15);
+        camera.lookAt(0, 0, 0);
+        controls.update();
+      }
     }
 
     // Обработка колесика мыши для температуры
@@ -563,6 +695,9 @@ export default defineComponent({
 
       globalTemp.value = newTemp;
       event.preventDefault();
+
+      // Обновляем текущий ток при изменении температуры
+      updateCurrent();
     }
 
     function showErrorPopup(message: string) {
@@ -591,6 +726,7 @@ export default defineComponent({
       errorMessage,
       slots,
       snapshots,
+      currentI,
 
       // Methods
       onDragStart,
@@ -599,7 +735,9 @@ export default defineComponent({
       saveSnapshot,
       resetScene,
       removeComponent3D,
-      showErrorPopup
+      showErrorPopup,
+      calculateCurrentResistance,
+      calculateCurrent
     };
   }
 });
@@ -689,7 +827,7 @@ strong, div {
 
 .current-components {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 16px;
   margin-top: 12px;
 }
@@ -712,6 +850,117 @@ strong, div {
   font-style: italic;
   text-align: center;
   padding: 20px;
+}
+
+.component-params {
+  margin: 12px 0;
+  padding: 12px;
+  background: #ffffff;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+.param-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.param-row label {
+  font-weight: 500;
+  color: #4b5563;
+  font-size: 14px;
+  min-width: 80px;
+}
+
+.param-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.voltage-slider {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: #e5e7eb;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.voltage-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #4f46e5;
+  cursor: pointer;
+}
+
+.voltage-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #4f46e5;
+  cursor: pointer;
+  border: none;
+}
+
+.voltage-input, .param-input {
+  width: 80px;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 14px;
+  text-align: center;
+  appearance: textfield;
+}
+
+.voltage-input::-webkit-inner-spin-button,
+.voltage-input::-webkit-outer-spin-button,
+.param-input::-webkit-inner-spin-button,
+.param-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+.param-unit {
+  font-size: 14px;
+  color: #6b7280;
+  min-width: 20px;
+}
+
+.voltage-value {
+  margin-top: 8px;
+  padding: 8px;
+  background: #f3f4f6;
+  border-radius: 4px;
+  font-size: 14px;
+  text-align: center;
+  color: #374151;
+}
+
+.param-info {
+  margin-top: 12px;
+  padding: 8px;
+  background: #f0f9ff;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.param-info div {
+  margin-bottom: 4px;
+}
+
+.param-info div:last-child {
+  margin-bottom: 0;
 }
 
 .snapshots-table {
