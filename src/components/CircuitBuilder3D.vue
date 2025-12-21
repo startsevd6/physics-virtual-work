@@ -495,7 +495,7 @@ export default defineComponent({
       if (type === 'amm' && loader) {
         // Для амперметра пытаемся загрузить GLB
         try {
-          const gltf = await loadGLBModel('src/models/ammeter.glb');
+          const gltf = await loadGLBModel('/models/ammeter.glb');
           model = gltf.scene;
         } catch (error) {
           console.warn('Не удалось загрузить GLB модель, создаем геометрию');
