@@ -85,7 +85,6 @@
           <table>
             <thead>
             <tr>
-              <th>Время</th>
               <th>Напряжение (В)</th>
               <th>Ток (А)</th>
               <th>Сопротивление (Ω)</th>
@@ -94,7 +93,6 @@
             </thead>
             <tbody>
             <tr v-for="(s,i) in snapshots" :key="i">
-              <td>{{ new Date(s.time).toLocaleTimeString() }}</td>
               <td>{{ s.V }}</td>
               <td>{{ s.I || '—' }}</td>
               <td>{{ s.R || '—' }}</td>
@@ -524,15 +522,14 @@ export default defineComponent({
       }
 
       const snapshot: any = {
-        time: new Date().toISOString(),
-        V: V.toFixed(3),
-        R: isNaN(Rsample) ? '—' : Rsample.toFixed(6),
+        V: V.toFixed(2),
+        R: isNaN(Rsample) ? '—' : Rsample.toFixed(2),
         T
       };
 
       if (ammeterSlot && ammeterSlot.occupied) {
         const I = (Rsample && !isNaN(Rsample) && Rsample > 0) ? V / Rsample : 0;
-        snapshot.I = I.toFixed(6);
+        snapshot.I = I.toFixed(2);
       }
 
       snapshots.value.unshift(snapshot);
