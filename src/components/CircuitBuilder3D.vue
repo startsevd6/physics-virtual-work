@@ -38,14 +38,6 @@
             @drop="onDrop"
             class="three-scene"
         ></div>
-
-        <div class="scene-controls">
-          <button @click="rotateCamera('left')">↶</button>
-          <button @click="rotateCamera('right')">↷</button>
-          <button @click="zoomCamera('in')">+</button>
-          <button @click="zoomCamera('out')">-</button>
-          <button @click="resetCamera">↺</button>
-        </div>
       </div>
     </div>
 
@@ -497,39 +489,6 @@ export default defineComponent({
       await addComponentToSlot(type, meta, freeSlotIndex);
     }
 
-    // Управление камерой
-    function rotateCamera(direction: 'left' | 'right') {
-      const angle = direction === 'left' ? Math.PI / 4 : -Math.PI / 4;
-      const currentPosition = camera.position.clone();
-
-      // Вращаем позицию камеры вокруг оси Y
-      const newX = currentPosition.x * Math.cos(angle) - currentPosition.z * Math.sin(angle);
-      const newZ = currentPosition.x * Math.sin(angle) + currentPosition.z * Math.cos(angle);
-
-      new Tween(camera.position)
-          .to({ x: newX, z: newZ }, 500)
-          .easing(Easing.Quadratic.InOut)
-          .start();
-    }
-
-    function zoomCamera(direction: 'in' | 'out') {
-      const sceneCenter = new THREE.Vector3(0, 0, 0);
-      const directionVector = camera.position.clone().sub(sceneCenter).normalize();
-      const distanceChange = direction === 'in' ? -2 : 2;
-
-      new Tween(camera.position)
-          .to(camera.position.clone().add(directionVector.multiplyScalar(distanceChange)), 300)
-          .easing(Easing.Quadratic.InOut)
-          .start();
-    }
-
-    function resetCamera() {
-      new Tween(camera.position)
-          .to({ x: 0, y: 8, z: 15 }, 800)
-          .easing(Easing.Exponential.Out)
-          .start();
-    }
-
     // Сохранение измерений
     function saveSnapshot() {
       const sourceSlot = slots[0];
@@ -589,7 +548,11 @@ export default defineComponent({
 
       snapshots.value = [];
       globalTemp.value = 300;
-      resetCamera();
+
+      // Сброс камеры к начальной позиции
+      camera.position.set(0, 8, 15);
+      camera.lookAt(0, 0, 0);
+      controls.update();
     }
 
     // Обработка колесика мыши для температуры
@@ -638,9 +601,6 @@ export default defineComponent({
       handleWheelScroll,
       saveSnapshot,
       resetScene,
-      rotateCamera,
-      zoomCamera,
-      resetCamera,
       removeComponent3D,
       showErrorPopup
     };
@@ -721,38 +681,6 @@ strong, div {
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(0,0,0,0.15);
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.scene-controls {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-  display: flex;
-  gap: 8px;
-  background: rgba(255,255,255,0.9);
-  padding: 10px;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-.scene-controls button {
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: 6px;
-  background: #4f46e5;
-  color: white;
-  font-size: 18px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.scene-controls button:hover {
-  background: #4338ca;
-  transform: scale(1.1);
 }
 
 .measurements-section {
