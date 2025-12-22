@@ -264,8 +264,8 @@ export default defineComponent({
     const slots = reactive<Slot3D[]>([
       {
         label: 'Источник напряжения',
-        position: new THREE.Vector3(-1, 0, 0),
-        rotation: new THREE.Euler(0, 0, 0),
+        position: new THREE.Vector3(-0.75, 0, 0),
+        rotation: new THREE.Euler(0, Math.PI / 2, 0),
         scale: 1.5,
         occupied: false,
         component: null,
@@ -273,8 +273,8 @@ export default defineComponent({
       },
       {
         label: 'Терморезистор',
-        position: new THREE.Vector3(0, 0, 0),
-        rotation: new THREE.Euler(0, 0, 0),
+        position: new THREE.Vector3(0.75, 0, 0),
+        rotation: new THREE.Euler(0, Math.PI / 2, 0),
         scale: 1.2,
         occupied: false,
         component: null,
@@ -282,7 +282,7 @@ export default defineComponent({
       },
       {
         label: 'Амперметр',
-        position: new THREE.Vector3(1, 0, 0),
+        position: new THREE.Vector3(-0.75, 0.325, 0),
         rotation: new THREE.Euler(0, Math.PI / 2, 0),
         scale: 1,
         occupied: false,
@@ -293,13 +293,6 @@ export default defineComponent({
 
     const snapshots = ref<any[]>([]);
 
-    // Текстуры и материалы
-    const materials = {
-      default: new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.3, roughness: 0.7 }),
-      source: new THREE.MeshStandardMaterial({ color: 0xff4444, metalness: 0.8, roughness: 0.2 }),
-      thermistor: new THREE.MeshStandardMaterial({ color: 0x44aaff, metalness: 0.4, roughness: 0.6 }),
-      ammeter: new THREE.MeshStandardMaterial({ color: 0x44ff44, metalness: 0.7, roughness: 0.3 })
-    };
 
     // Вычисление текущего сопротивления терморезистора
     function calculateCurrentResistance(componentData: any): number {
@@ -359,7 +352,7 @@ export default defineComponent({
           0.1,
           1000
       );
-      camera.position.set(0, 8, 15);
+      camera.position.set(0, 2, 3);
       camera.lookAt(0, 0, 0);
 
       // Рендерер
@@ -438,30 +431,106 @@ export default defineComponent({
       renderer.setSize(sceneContainer.value.clientWidth, sceneContainer.value.clientHeight);
     }
 
-    // Создание геометрии для типа компонента
-    function createGeometryForType(type: string): THREE.BufferGeometry {
-      switch(type) {
-        case 'source':
-          return new THREE.BoxGeometry(2, 1.5, 1);
-        case 'therm-sem':
-        case 'therm-met':
-          return new THREE.CylinderGeometry(0.8, 0.8, 2, 16);
-        case 'amm':
-          return new THREE.BoxGeometry(1.5, 1, 0.5);
-        default:
-          return new THREE.BoxGeometry(1, 1, 1);
+    // Загрузка 3D модели для компонента
+    async function loadModelForType(type: string, kind?: string): Promise<THREE.Object3D | null> {
+      if (!loader) return null;
+
+      try {
+        let modelPath = '';
+
+        // Определяем путь к модели в зависимости от типа компонента
+        switch(type) {
+          case 'source':
+            modelPath = '/models/voltage_source.glb'; // Путь к модели источника напряжения
+            break;
+          case 'therm-sem':
+          case 'therm-met':
+            modelPath = '/models/thermistor.glb'; // Путь к модели терморезистора
+            break;
+          case 'amm':
+            modelPath = '/models/ammeter.glb'; // Путь к модели амперметра
+            break;
+          default:
+            return null;
+        }
+
+        const gltf = await new Promise<any>((resolve, reject) => {
+          loader!.load(
+              modelPath,
+              (gltf) => resolve(gltf),
+              undefined,
+              (error) => reject(error)
+          );
+        });
+
+        const model = gltf.scene;
+
+        // Настройка тени для всех дочерних объектов
+        model.traverse((child: THREE.Mesh) => {
+          if (child instanceof THREE.Mesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+
+        return model;
+      } catch (error) {
+        console.warn(`Не удалось загрузить модель для ${type}:`, error);
+        // Возвращаем примитив как запасной вариант
+        return createFallbackGeometry(type, kind);
       }
     }
 
-    // Получение материала для типа компонента
-    function getMaterialForType(type: string): THREE.Material {
+    // Создание геометрии для типа компонента (запасной вариант)
+    function createFallbackGeometry(type: string, kind?: string): THREE.Mesh {
+      let geometry: THREE.BufferGeometry;
+      let material: THREE.Material;
+
       switch(type) {
-        case 'source': return materials.source;
+        case 'source':
+          geometry = new THREE.BoxGeometry(2, 1.5, 1);
+          material = new THREE.MeshStandardMaterial({
+            color: 0xff4444,
+            metalness: 0.8,
+            roughness: 0.2
+          });
+          break;
         case 'therm-sem':
-        case 'therm-met': return materials.thermistor;
-        case 'amm': return materials.ammeter;
-        default: return materials.default;
+        case 'therm-met':
+          geometry = new THREE.CylinderGeometry(0.8, 0.8, 2, 16);
+          material = kind === 'metal'
+              ? new THREE.MeshStandardMaterial({
+                  color: 0x4477cc,
+                  metalness: 0.8,
+                  roughness: 0.2
+                })
+              : new THREE.MeshStandardMaterial({
+                  color: 0xcc7744,
+                  metalness: 0.4,
+                  roughness: 0.6
+                });
+          break;
+        case 'amm':
+          geometry = new THREE.BoxGeometry(1.5, 1, 0.5);
+          material = new THREE.MeshStandardMaterial({
+            color: 0x44ff44,
+            metalness: 0.7,
+            roughness: 0.3
+          });
+          break;
+        default:
+          geometry = new THREE.BoxGeometry(1, 1, 1);
+          material = new THREE.MeshStandardMaterial({
+            color: 0x444444,
+            metalness: 0.3,
+            roughness: 0.7
+          });
       }
+
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      return mesh;
     }
 
     // Добавление компонента в слот
@@ -490,21 +559,11 @@ export default defineComponent({
         return false;
       }
 
-      // Загружаем модель или создаем геометрию
-      let model: THREE.Object3D;
+      // Загружаем 3D модель или создаем запасной вариант
+      let model = await loadModelForType(type, meta.kind);
 
-      if (type === 'amm' && loader) {
-        // Для амперметра пытаемся загрузить GLB
-        try {
-          const gltf = await loadGLBModel('/models/ammeter.glb');
-          model = gltf.scene;
-        } catch (error) {
-          console.warn('Не удалось загрузить GLB модель, создаем геометрию');
-          model = new THREE.Mesh(createGeometryForType(type), getMaterialForType(type));
-        }
-      } else {
-        // Для других компонентов создаем геометрию
-        model = new THREE.Mesh(createGeometryForType(type), getMaterialForType(type));
+      if (!model) {
+        model = createFallbackGeometry(type, meta.kind);
       }
 
       // Настройка модели
@@ -559,22 +618,6 @@ export default defineComponent({
       updateCurrent();
 
       return true;
-    }
-
-    // Загрузка GLB модели
-    function loadGLBModel(path: string): Promise<any> {
-      return new Promise((resolve, reject) => {
-        if (!loader) {
-          reject(new Error('GLTFLoader не инициализирован'));
-          return;
-        }
-        loader.load(
-            path,
-            (gltf) => resolve(gltf),
-            undefined,
-            (error) => reject(error)
-        );
-      });
     }
 
     // Удаление компонента из сцены
