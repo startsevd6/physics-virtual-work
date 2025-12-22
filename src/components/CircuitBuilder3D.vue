@@ -2,31 +2,41 @@
   <div>
     <h2>Сборка схемы (3D)</h2>
     <div class="circuit-3d-container">
-      <div class="components-panel">
-        <h4>Компоненты</h4>
-        <div class="component-list">
-          <div
-              v-for="c in components"
-              :key="c.type"
-              draggable="true"
-              @dragstart="onDragStart($event, c)"
-              class="component-item"
-          >
-            <strong>{{ c.label }}</strong>
-            <div style="font-size:12px">{{ c.desc }}</div>
-          </div>
+      <div class="controls-panel">
+        <h4>Управление</h4>
 
-          <div class="temperature-control">
-            <label>Температура (K)</label>
-            <input
-                type="range"
-                min="290"
-                max="380"
-                v-model.number="globalTemp"
-                @wheel.prevent="handleWheelScroll"
-            />
-            <div>{{ globalTemp }} K</div>
+        <div class="thermistor-type-selector">
+          <label>Тип терморезистора:</label>
+          <div class="radio-group">
+            <label>
+              <input
+                  type="radio"
+                  value="metal"
+                  v-model="selectedThermistorKind"
+              />
+              Металлический
+            </label>
+            <label>
+              <input
+                  type="radio"
+                  value="semiconductor"
+                  v-model="selectedThermistorKind"
+              />
+              Полупроводниковый
+            </label>
           </div>
+        </div>
+
+        <div class="temperature-control">
+          <label>Температура (K)</label>
+          <input
+              type="range"
+              min="290"
+              max="380"
+              v-model.number="globalTemp"
+              @wheel.prevent="handleWheelScroll"
+          />
+          <div>{{ globalTemp }} K</div>
         </div>
       </div>
 
@@ -34,8 +44,6 @@
         <div
             id="scene3d"
             ref="sceneContainer"
-            @dragover.prevent
-            @drop="onDrop"
             class="three-scene"
         ></div>
       </div>
@@ -44,7 +52,7 @@
     <div class="measurements-section">
       <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
         <button @click="saveSnapshot">Сохранить показания</button>
-        <button @click="resetScene">Сброс сцены</button>
+        <button @click="resetValues">Сброс</button>
       </div>
 
       <div style="margin-top:12px">
@@ -83,11 +91,10 @@
                     Текущее значение: {{ slot.component.data.voltage || 0 }} В
                   </div>
                 </div>
-                <button @click="() => removeComponent3D(slot)">Удалить</button>
               </div>
 
               <!-- Терморезистор -->
-              <div v-else-if="slot.component.data.type === 'therm-met' || slot.component.data.type === 'therm-sem'">
+              <div v-else-if="slot.component.data.type === 'thermistor'">
                 <strong>{{ slot.component.data.kind === 'metal' ? 'Металлический' : 'Полупроводниковый' }} терморезистор</strong>
                 <div class="component-params">
                   <div class="param-row">
@@ -145,7 +152,6 @@
                     </div>
                   </div>
                 </div>
-                <button @click="() => removeComponent3D(slot)">Удалить</button>
               </div>
 
               <!-- Амперметр -->
@@ -161,10 +167,8 @@
                     </div>
                   </div>
                 </div>
-                <button @click="() => removeComponent3D(slot)">Удалить</button>
               </div>
             </div>
-            <div v-else class="slot-empty">Пусто</div>
           </div>
         </div>
       </div>
@@ -203,11 +207,10 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, onMounted, onUnmounted, ref, reactive } from 'vue';
+import { defineComponent, onMounted, onUnmounted, ref, reactive, watch } from 'vue';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { Tween, Easing } from '@tweenjs/tween.js';
 import ErrorPopup from './ErrorPopup.vue';
 
 // Типы для 3D объектов
@@ -249,23 +252,17 @@ export default defineComponent({
     let loader: GLTFLoader | null = null;
 
     // Состояние приложения
-    const components = [
-      { type: 'source', label: 'Источник напряжения', desc: 'Источник питания 0–15 В' },
-      { type: 'therm-sem', label: 'Терморезистор (полупр.)', desc: 'Полупроводниковый образец', meta: { kind: 'semiconductor' } },
-      { type: 'therm-met', label: 'Терморезистор (металл)', desc: 'Металлический образец', meta: { kind: 'metal' } },
-      { type: 'amm', label: 'Амперметр', desc: 'Включается в цепь' }
-    ];
-
     const globalTemp = ref(300);
     const showError = ref(false);
     const errorMessage = ref('');
+    const selectedThermistorKind = ref('metal');
 
     // Слоты для компонентов (3D позиции)
     const slots = reactive<Slot3D[]>([
       {
         label: 'Источник напряжения',
         position: new THREE.Vector3(-0.75, 0, 0),
-        rotation: new THREE.Euler(0, Math.PI / 2, 0),
+        rotation: new THREE.Euler(0, -Math.PI / 2, 0),
         scale: 1.5,
         occupied: false,
         component: null,
@@ -274,16 +271,16 @@ export default defineComponent({
       {
         label: 'Терморезистор',
         position: new THREE.Vector3(0.75, 0, 0),
-        rotation: new THREE.Euler(0, Math.PI / 2, 0),
+        rotation: new THREE.Euler(0, -Math.PI / 2, 0),
         scale: 1.2,
         occupied: false,
         component: null,
-        allowedTypes: ['therm-sem', 'therm-met']
+        allowedTypes: ['thermistor']
       },
       {
         label: 'Амперметр',
         position: new THREE.Vector3(-0.75, 0.325, 0),
-        rotation: new THREE.Euler(0, Math.PI / 2, 0),
+        rotation: new THREE.Euler(0, -Math.PI / 2, 0),
         scale: 1,
         occupied: false,
         component: null,
@@ -292,7 +289,6 @@ export default defineComponent({
     ]);
 
     const snapshots = ref<any[]>([]);
-
 
     // Вычисление текущего сопротивления терморезистора
     function calculateCurrentResistance(componentData: any): number {
@@ -402,11 +398,24 @@ export default defineComponent({
       // Загрузчик моделей
       loader = new GLTFLoader();
 
+      // Инициализация компонентов сразу после создания сцены
+      initComponents();
+
       // Анимация
       animate();
 
       // Обработка изменения размера окна
       window.addEventListener('resize', onWindowResize);
+    }
+
+    // Инициализация всех компонентов схемы
+    async function initComponents() {
+      if (!scene) return;
+
+      // Добавляем все компоненты сразу
+      await addComponentToSlot('source', { kind: 'source' }, 0);
+      await addComponentToSlot('thermistor', { kind: selectedThermistorKind.value }, 1);
+      await addComponentToSlot('amm', { kind: 'amm' }, 2);
     }
 
     // Анимационный цикл
@@ -441,14 +450,13 @@ export default defineComponent({
         // Определяем путь к модели в зависимости от типа компонента
         switch(type) {
           case 'source':
-            modelPath = '/models/voltage_source.glb'; // Путь к модели источника напряжения
+            modelPath = '/models/voltage_source.glb';
             break;
-          case 'therm-sem':
-          case 'therm-met':
-            modelPath = '/models/thermistor.glb'; // Путь к модели терморезистора
+          case 'thermistor':
+            modelPath = '/models/thermistor.glb'; // Одинаковая модель для обоих типов
             break;
           case 'amm':
-            modelPath = '/models/ammeter.glb'; // Путь к модели амперметра
+            modelPath = '/models/ammeter.glb';
             break;
           default:
             return null;
@@ -467,10 +475,8 @@ export default defineComponent({
 
         // Настройка тени для всех дочерних объектов
         model.traverse((child: THREE.Mesh) => {
-          if (child instanceof THREE.Mesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-          }
+          child.castShadow = true;
+          child.receiveShadow = true;
         });
 
         return model;
@@ -495,20 +501,13 @@ export default defineComponent({
             roughness: 0.2
           });
           break;
-        case 'therm-sem':
-        case 'therm-met':
+        case 'thermistor':
           geometry = new THREE.CylinderGeometry(0.8, 0.8, 2, 16);
-          material = kind === 'metal'
-              ? new THREE.MeshStandardMaterial({
-                  color: 0x4477cc,
-                  metalness: 0.8,
-                  roughness: 0.2
-                })
-              : new THREE.MeshStandardMaterial({
-                  color: 0xcc7744,
-                  metalness: 0.4,
-                  roughness: 0.6
-                });
+          material = new THREE.MeshStandardMaterial({
+            color: kind === 'metal' ? 0x4477cc : 0xcc7744,
+            metalness: 0.6,
+            roughness: 0.4
+          });
           break;
         case 'amm':
           geometry = new THREE.BoxGeometry(1.5, 1, 0.5);
@@ -538,27 +537,6 @@ export default defineComponent({
       const slot = slots[slotIndex];
       if (!slot || !scene) return false;
 
-      // Проверка допустимости типа
-      if (!slot.allowedTypes.includes(type)) {
-        showErrorPopup(`В слот "${slot.label}" нельзя добавить этот компонент`);
-        return false;
-      }
-
-      // Проверка занятости слота
-      if (slot.occupied) {
-        showErrorPopup(`Слот "${slot.label}" уже занят`);
-        return false;
-      }
-
-      // Проверка уникальности компонента
-      const existingComponent = slots.find(s =>
-          s.component?.type === type && s.component !== null
-      );
-      if (existingComponent) {
-        showErrorPopup('Такой компонент уже добавлен в схему!');
-        return false;
-      }
-
       // Загружаем 3D модель или создаем запасной вариант
       let model = await loadModelForType(type, meta.kind);
 
@@ -568,28 +546,17 @@ export default defineComponent({
 
       // Настройка модели
       model.traverse((child) => {
-        if (child instanceof THREE.Mesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
-        }
+        child.castShadow = true;
+        child.receiveShadow = true;
       });
-
-      // поворот на 180 градусов вокруг оси Y
-      slot.rotation.y += Math.PI;
 
       model.scale.set(slot.scale, slot.scale, slot.scale);
       model.position.copy(slot.position);
       model.rotation.copy(slot.rotation);
 
-      // Анимация появления
       const initialScale = 0.1;
       model.scale.set(initialScale, initialScale, initialScale);
       scene.add(model);
-
-      new Tween(model.scale)
-          .to({ x: slot.scale, y: slot.scale, z: slot.scale }, 500)
-          .easing(Easing.Elastic.Out)
-          .start();
 
       // Создание объекта компонента с начальными параметрами
       const component: Component3D = {
@@ -597,12 +564,12 @@ export default defineComponent({
         model,
         data: {
           type,
-          ...meta,
+          kind: meta.kind,
           voltage: type === 'source' ? 0 : undefined,
-          R0: (type === 'therm-met' || type === 'therm-sem') ?
+          R0: type === 'thermistor' ?
               (meta.kind === 'metal' ? 100 : 1000) : undefined,
-          alpha: type === 'therm-met' ? 0.0039 : undefined,
-          B: type === 'therm-sem' ? 3500 : undefined
+          alpha: type === 'thermistor' && meta.kind === 'metal' ? 0.0039 : undefined,
+          B: type === 'thermistor' && meta.kind === 'semiconductor' ? 3500 : undefined
         },
         position: slot.position.clone(),
         rotation: slot.rotation.clone(),
@@ -620,59 +587,26 @@ export default defineComponent({
       return true;
     }
 
-    // Удаление компонента из сцены
-    function removeComponent3D(slot: Slot3D | undefined) {
-      if (!slot || !slot.component || !scene) return;
+    // Обновление типа терморезистора при изменении радиокнопки
+    function updateThermistorKind() {
+      const thermistorSlot = slots[1];
+      if (thermistorSlot?.component && thermistorSlot.component.data.type === 'thermistor') {
+        // Обновляем данные компонента
+        thermistorSlot.component.data.kind = selectedThermistorKind.value;
 
-      if (slot.component.model) {
-        // Сохраняем ссылки на объекты для анимации
-        const model = slot.component.model;
-        const slotRef = slot;
+        // Обновляем параметры по умолчанию в зависимости от типа
+        if (selectedThermistorKind.value === 'metal') {
+          thermistorSlot.component.data.R0 = 100;
+          thermistorSlot.component.data.alpha = 0.0039;
+          thermistorSlot.component.data.B = undefined;
+        } else {
+          thermistorSlot.component.data.R0 = 1000;
+          thermistorSlot.component.data.alpha = undefined;
+          thermistorSlot.component.data.B = 3500;
+        }
 
-        // Анимация исчезновения
-        new Tween(model.scale)
-            .to({ x: 0.1, y: 0.1, z: 0.1 }, 300)
-            .easing(Easing.Back.In)
-            .onComplete(() => {
-              scene!.remove(model);
-              slotRef.occupied = false;
-              slotRef.component = null;
-              updateCurrent();
-            })
-            .start();
-      } else {
-        slot.occupied = false;
-        slot.component = null;
         updateCurrent();
       }
-    }
-
-    // Обработка начала перетаскивания
-    function onDragStart(e: DragEvent, c: any) {
-      e.dataTransfer?.setData('application/json', JSON.stringify({
-        type: c.type,
-        meta: c.meta || {}
-      }));
-    }
-
-    // Обработка drop на сцену
-    async function onDrop(e: DragEvent) {
-      e.preventDefault();
-
-      const json = e.dataTransfer?.getData('application/json');
-      if (!json) return;
-
-      const { type, meta } = JSON.parse(json);
-
-      // Находим ближайший свободный слот
-      const freeSlotIndex = slots.findIndex(s => !s.occupied);
-      if (freeSlotIndex === -1) {
-        showErrorPopup('Все слоты заняты!');
-        return;
-      }
-
-      // Добавляем компонент в слот
-      await addComponentToSlot(type, meta, freeSlotIndex);
     }
 
     // Сохранение измерений
@@ -709,23 +643,32 @@ export default defineComponent({
       snapshots.value.unshift(snapshot);
     }
 
-    // Сброс сцены
-    function resetScene() {
-      slots.forEach(slot => {
-        if (slot && slot.component) {
-          removeComponent3D(slot);
-        }
-      });
+    // Сброс значений к значениям по умолчанию
+    function resetValues() {
+      // Сбрасываем напряжение источника
+      const sourceSlot = slots[0];
+      if (sourceSlot?.component) {
+        sourceSlot.component.data.voltage = 0;
+      }
 
-      snapshots.value = [];
+      // Сбрасываем температуру
       globalTemp.value = 300;
 
-      // Сброс камеры к начальной позиции
+      // Сбрасываем параметры терморезистора к значениям по умолчанию
+      selectedThermistorKind.value = 'metal';
+      updateThermistorKind();
+
+      // Очищаем сохраненные показания
+      snapshots.value = [];
+
+      // Сбрасываем камеру к начальной позиции
       if (camera && controls) {
-        camera.position.set(0, 8, 15);
+        camera.position.set(0, 2, 3);
         camera.lookAt(0, 0, 0);
         controls.update();
       }
+
+      updateCurrent();
     }
 
     // Обработка колесика мыши для температуры
@@ -749,6 +692,9 @@ export default defineComponent({
       showError.value = true;
     }
 
+    // Следим за изменением типа терморезистора
+    watch(selectedThermistorKind, updateThermistorKind);
+
     // Хуки жизненного цикла
     onMounted(() => {
       initThreeJS();
@@ -764,24 +710,19 @@ export default defineComponent({
     return {
       // Refs
       sceneContainer,
-      components,
       globalTemp,
       showError,
       errorMessage,
       slots,
       snapshots,
       currentI,
+      selectedThermistorKind,
 
       // Methods
-      onDragStart,
-      onDrop,
       handleWheelScroll,
       saveSnapshot,
-      resetScene,
-      removeComponent3D,
-      showErrorPopup,
+      resetValues,
       calculateCurrentResistance,
-      calculateCurrent
     };
   }
 });
@@ -802,7 +743,7 @@ strong, div {
   margin-bottom: 20px;
 }
 
-.components-panel {
+.controls-panel {
   width: 250px;
   background: #fff;
   border-radius: 8px;
@@ -810,35 +751,43 @@ strong, div {
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-.component-list {
+.thermistor-type-selector {
+  margin-bottom: 20px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 6px;
+}
+
+.thermistor-type-selector label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.radio-group {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
-.component-item {
-  padding: 12px;
-  border: 2px dashed #e3e8ef;
-  border-radius: 6px;
-  cursor: grab;
-  transition: all 0.2s;
+.radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: normal;
+  margin-bottom: 0;
 }
 
-.component-item:hover {
-  border-color: #4f46e5;
-  background: #f8fafc;
-  transform: translateY(-2px);
-}
-
-.component-item:active {
-  cursor: grabbing;
+.radio-group input[type="radio"] {
+  cursor: pointer;
 }
 
 .temperature-control {
   padding: 16px;
   background: #f8fafc;
   border-radius: 6px;
-  margin-top: 16px;
 }
 
 .temperature-control label {
@@ -846,6 +795,11 @@ strong, div {
   margin-bottom: 8px;
   font-weight: 500;
   color: #374151;
+}
+
+.temperature-control input[type="range"] {
+  width: 100%;
+  margin: 8px 0;
 }
 
 .scene-container {
@@ -887,13 +841,6 @@ strong, div {
   font-weight: 600;
   margin-bottom: 12px;
   color: #374151;
-}
-
-.slot-empty {
-  color: #9ca3af;
-  font-style: italic;
-  text-align: center;
-  padding: 20px;
 }
 
 .component-params {
