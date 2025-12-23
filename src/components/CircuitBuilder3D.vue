@@ -5,6 +5,13 @@
       <div class="controls-panel">
         <h4>Управление</h4>
 
+        <div class="shadow-control">
+          <label>Тени:</label>
+          <button class="shadow-toggle-btn" @click="toggleShadows">
+            {{ showShadows ? 'Выключить' : 'Включить' }}
+          </button>
+        </div>
+
         <div class="thermistor-type-selector">
           <label>Тип терморезистора:</label>
           <div class="radio-group">
@@ -256,6 +263,7 @@ export default defineComponent({
     const showError = ref(false);
     const errorMessage = ref('');
     const selectedThermistorKind = ref('metal');
+    const showShadows = ref(true); // Состояние для теней
 
     // Слоты для компонентов (3D позиции)
     const slots = reactive<Slot3D[]>([
@@ -289,6 +297,35 @@ export default defineComponent({
     ]);
 
     const snapshots = ref<any[]>([]);
+
+    // Функция для переключения теней
+    function toggleShadows() {
+      showShadows.value = !showShadows.value;
+      updateShadows();
+    }
+
+    // Функция для обновления теней во всех объектах сцены
+    function updateShadows() {
+      if (!scene || !renderer) return;
+
+      // Обновляем настройки рендерера
+      renderer.shadowMap.enabled = showShadows.value;
+
+      // Обходим все объекты в сцене и обновляем их тени
+      scene.traverse((object) => {
+        object.castShadow = showShadows.value;
+        object.receiveShadow = showShadows.value;
+      });
+
+      // Также обновляем тени у направленного света
+      if (scene.children) {
+        scene.children.forEach(child => {
+          if (child instanceof THREE.DirectionalLight) {
+            child.castShadow = showShadows.value;
+          }
+        });
+      }
+    }
 
     // Вычисление текущего сопротивления терморезистора
     function calculateCurrentResistance(componentData: any): number {
@@ -354,7 +391,7 @@ export default defineComponent({
       // Рендерер
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       renderer.setSize(sceneContainer.value.clientWidth, sceneContainer.value.clientHeight);
-      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.enabled = showShadows.value;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       sceneContainer.value.appendChild(renderer.domElement);
 
@@ -373,7 +410,7 @@ export default defineComponent({
 
       const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
       directionalLight.position.set(5, 10, 5);
-      directionalLight.castShadow = true;
+      directionalLight.castShadow = showShadows.value;
       directionalLight.shadow.mapSize.width = 2048;
       directionalLight.shadow.mapSize.height = 2048;
       scene.add(directionalLight);
@@ -392,7 +429,7 @@ export default defineComponent({
       const floor = new THREE.Mesh(floorGeometry, floorMaterial);
       floor.rotation.x = -Math.PI / 2;
       floor.position.y = -0.175;
-      floor.receiveShadow = true;
+      floor.receiveShadow = showShadows.value;
       scene.add(floor);
 
       // Загрузчик моделей
@@ -475,8 +512,8 @@ export default defineComponent({
 
         // Настройка тени для всех дочерних объектов
         model.traverse((child: THREE.Mesh) => {
-          child.castShadow = true;
-          child.receiveShadow = true;
+          child.castShadow = showShadows.value;
+          child.receiveShadow = showShadows.value;
         });
 
         return model;
@@ -527,8 +564,8 @@ export default defineComponent({
       }
 
       const mesh = new THREE.Mesh(geometry, material);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
+      mesh.castShadow = showShadows.value;
+      mesh.receiveShadow = showShadows.value;
       return mesh;
     }
 
@@ -546,8 +583,8 @@ export default defineComponent({
 
       // Настройка модели
       model.traverse((child) => {
-        child.castShadow = true;
-        child.receiveShadow = true;
+        child.castShadow = showShadows.value;
+        child.receiveShadow = showShadows.value;
       });
 
       model.scale.set(slot.scale, slot.scale, slot.scale);
@@ -717,12 +754,14 @@ export default defineComponent({
       snapshots,
       currentI,
       selectedThermistorKind,
+      showShadows,
 
       // Methods
       handleWheelScroll,
       saveSnapshot,
       resetValues,
       calculateCurrentResistance,
+      toggleShadows,
     };
   }
 });
@@ -749,6 +788,25 @@ strong, div {
   border-radius: 8px;
   padding: 16px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.shadow-control {
+  margin-bottom: 20px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 6px;
+}
+
+.shadow-control label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.shadow-toggle-btn {
+  width: 100%;
+  margin-top: 0;
 }
 
 .thermistor-type-selector {
