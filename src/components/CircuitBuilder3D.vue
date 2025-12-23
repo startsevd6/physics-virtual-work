@@ -190,6 +190,7 @@
               <th>Ток (А)</th>
               <th>Сопротивление (Ω)</th>
               <th>Температура (K)</th>
+              <th>Тип терморезистора</th>
             </tr>
             </thead>
             <tbody>
@@ -198,6 +199,7 @@
               <td>{{ s.I || '—' }}</td>
               <td>{{ s.R || '—' }}</td>
               <td>{{ s.T }}</td>
+              <td>{{ getThermistorTypeLabel(s.thermistorType) }}</td>
             </tr>
             </tbody>
           </table>
@@ -666,10 +668,14 @@ export default defineComponent({
       const T = globalTemp.value;
       let Rsample = calculateCurrentResistance(sampleSlot.component?.data);
 
+      // Получаем тип терморезистора из данных компонента
+      const thermistorType = sampleSlot.component?.data?.kind || selectedThermistorKind.value;
+
       const snapshot: any = {
         V: V.toFixed(2),
         R: isNaN(Rsample) ? '—' : Rsample.toFixed(2),
-        T
+        T,
+        thermistorType // Добавляем тип терморезистора
       };
 
       if (ammeterSlot && ammeterSlot.occupied) {
@@ -678,6 +684,18 @@ export default defineComponent({
       }
 
       snapshots.value.unshift(snapshot);
+    }
+
+    // Функция для получения читаемого названия типа терморезистора
+    function getThermistorTypeLabel(type: string): string {
+      switch(type) {
+        case 'metal':
+          return 'Металлический';
+        case 'semiconductor':
+          return 'Полупроводниковый';
+        default:
+          return '—';
+      }
     }
 
     // Сброс значений к значениям по умолчанию
@@ -762,6 +780,7 @@ export default defineComponent({
       resetValues,
       calculateCurrentResistance,
       toggleShadows,
+      getThermistorTypeLabel,
     };
   }
 });
