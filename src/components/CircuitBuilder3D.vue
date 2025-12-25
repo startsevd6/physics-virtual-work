@@ -276,6 +276,8 @@ export default defineComponent({
     const errorMessage = ref('');
     const selectedThermistorKind = ref('metal');
     const showShadows = ref(true);
+    const voltageSpinner = ref<THREE.Object3D | null>(null);
+    const thermistorSpinner = ref<THREE.Object3D | null>(null);
 
     // Слоты для компонентов (3D позиции)
     const slots = reactive<Slot3D[]>([
@@ -547,6 +549,13 @@ export default defineComponent({
           scene.add(model);
           decorativeElements.value.push(model);
 
+          // Сохраняем ссылки на спиннеры
+          if (config.name === 'spinner_for_voltage_2') {
+            voltageSpinner.value = model;
+          } else if (config.name === 'spinner_for_thermistor') {
+            thermistorSpinner.value = model;
+          }
+
         } catch (error) {
           console.warn(`Не удалось загрузить декоративную модель ${config.name}:`, error);
           // Создаем простую геометрию в качестве заглушки
@@ -554,10 +563,61 @@ export default defineComponent({
           if (fallback) {
             scene.add(fallback);
             decorativeElements.value.push(fallback);
+
+            // Сохраняем ссылки для заглушек тоже
+            if (config.name === 'spinner_for_voltage_2') {
+              voltageSpinner.value = fallback;
+            } else if (config.name === 'spinner_for_thermistor') {
+              thermistorSpinner.value = fallback;
+            }
           }
         }
       }
     }
+
+    // Функция для вращения спиннера источника напряжения
+    function updateVoltageSpinnerRotation() {
+      if (!voltageSpinner.value) return;
+
+      const sourceSlot = slots[0];
+      if (!sourceSlot?.component) return;
+
+      const voltage = sourceSlot.component.data.voltage || 0;
+      // Масштабируем напряжение в угол вращения (0-15В = 0-360 градусов)
+      const rotationAngle = (voltage / 15) * Math.PI / 2.5;
+
+      // Вращаем вокруг оси Y (в данном случае)
+      voltageSpinner.value.rotation.y = -3*Math.PI/4 + rotationAngle;
+    }
+
+    // Функция для вращения спиннера терморезистора
+    function updateThermistorSpinnerRotation() {
+      if (!thermistorSpinner.value) return;
+
+      // Масштабируем температуру в угол вращения (290-380K = 0-360 градусов)
+      const minTemp = 290;
+      const maxTemp = 380;
+      const normalizedTemp = (globalTemp.value - minTemp) / (maxTemp - minTemp);
+      const rotationAngle = -normalizedTemp * Math.PI * 1.75;
+
+      // Вращаем вокруг оси Y
+      thermistorSpinner.value.rotation.y = -Math.PI/2 + rotationAngle;
+    }
+
+    // Следим за изменением напряжения
+    watch(() => slots[0]?.component?.data?.voltage, () => {
+      updateVoltageSpinnerRotation();
+    });
+
+    // Следим за изменением температуры
+    watch(globalTemp, () => {
+      updateThermistorSpinnerRotation();
+    });
+
+    // Также обновляем при изменении типа терморезистора
+    watch(selectedThermistorKind, () => {
+      updateThermistorSpinnerRotation();
+    });
 
     // Создание заглушки для декоративных элементов
     function createFallbackDecorative(name: string): THREE.Mesh | null {
@@ -787,8 +847,13 @@ export default defineComponent({
       if (renderer && camera && scene) {
         renderer.render(scene, camera);
       }
+
       // Обновляем текущий ток
       updateCurrent();
+
+      // Обновляем вращение спиннеров
+      updateVoltageSpinnerRotation();
+      updateThermistorSpinnerRotation();
     }
 
     // Обработка изменения размера окна
@@ -1045,6 +1110,8 @@ export default defineComponent({
       }
 
       updateCurrent();
+      updateVoltageSpinnerRotation();
+      updateThermistorSpinnerRotation();
     }
 
     // Обработка колесика мыши для температуры
@@ -1101,6 +1168,8 @@ export default defineComponent({
       currentI,
       selectedThermistorKind,
       showShadows,
+      voltageSpinner,
+      thermistorSpinner,
 
       // Methods
       handleWheelScroll,
