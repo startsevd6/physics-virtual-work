@@ -9,9 +9,10 @@ export default defineConfig({
         rollupOptions: {
             output: {
                 manualChunks: {
-                    three: ['three', '@tweenjs/tween.js']
+                    three: ['three']
                 }
             }
-        }
+        },
+        chunkSizeWarningLimit: 1000,
     }
 })
