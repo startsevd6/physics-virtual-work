@@ -735,8 +735,8 @@ export default defineComponent({
         scale: 0.1,
         width: 2,
         height: 0.8,
-        fontSize: 0.3,
-        color: 0x00ff00,
+        fontSize: 40,
+        color: "#FF1616",
         bgColor: 0x000000
       },
       // Дисплей напряжения на вольтамперметре
@@ -747,8 +747,8 @@ export default defineComponent({
         scale: 0.115,
         width: 1.5,
         height: 0.6,
-        fontSize: 0.2,
-        color: 0x00ff00,
+        fontSize: 40,
+        color: "#FF1616",
         bgColor: 0x000000
       },
       // Дисплей тока на вольтамперметре
@@ -759,8 +759,8 @@ export default defineComponent({
         scale: 0.115,
         width: 1.5,
         height: 0.6,
-        fontSize: 0.2,
-        color: 0x00ff00,
+        fontSize: 40,
+        color: "#FF1616",
         bgColor: 0x000000
       }
     ];
@@ -783,7 +783,7 @@ export default defineComponent({
 
       // Текст по умолчанию
       context.font = 'bold 40px Arial';
-      context.fillStyle = '#00ff00';
+      context.fillStyle = '#FF1616';
       context.textAlign = 'center';
       context.textBaseline = 'middle';
       context.fillText('0.00', canvas.width/2, canvas.height/2);
@@ -822,13 +822,14 @@ export default defineComponent({
       canvas.width = 256;
       canvas.height = 128;
 
-      // Фон
-      context.fillStyle = '#000000';
+      // Фон - используем цвет из конфига
+      context.fillStyle = config.bgColor || '#000000';
       context.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Текст
-      context.font = 'bold 40px Arial';
-      context.fillStyle = '#00ff00';
+      // Текст - используем параметры из конфига
+      const fontSize = config.fontSize || 40;
+      context.font = `bold ${fontSize}px Arial`;
+      context.fillStyle = config.color || '#00ff00';
       context.textAlign = 'center';
       context.textBaseline = 'middle';
       context.fillText(text, canvas.width/2, canvas.height/2);
