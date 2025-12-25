@@ -735,7 +735,7 @@ export default defineComponent({
         scale: 0.1,
         width: 2,
         height: 0.8,
-        fontSize: 40,
+        fontSize: 60,
         color: "#FF1616",
         bgColor: 0x000000
       },
@@ -747,7 +747,7 @@ export default defineComponent({
         scale: 0.115,
         width: 1.5,
         height: 0.6,
-        fontSize: 40,
+        fontSize: 60,
         color: "#FF1616",
         bgColor: 0x000000
       },
@@ -759,7 +759,7 @@ export default defineComponent({
         scale: 0.115,
         width: 1.5,
         height: 0.6,
-        fontSize: 40,
+        fontSize: 60,
         color: "#FF1616",
         bgColor: 0x000000
       }
@@ -782,7 +782,7 @@ export default defineComponent({
       context.fillRect(0, 0, canvas.width, canvas.height);
 
       // Текст по умолчанию
-      context.font = 'bold 40px Arial';
+      context.font = 'bold 60px SevenSegment';
       context.fillStyle = '#FF1616';
       context.textAlign = 'center';
       context.textBaseline = 'middle';
@@ -822,17 +822,34 @@ export default defineComponent({
       canvas.width = 256;
       canvas.height = 128;
 
-      // Фон - используем цвет из конфига
-      context.fillStyle = config.bgColor || '#000000';
+      // Фон
+      context.fillStyle = '#000000';
       context.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Текст - используем параметры из конфига
-      const fontSize = config.fontSize || 40;
-      context.font = `bold ${fontSize}px Arial`;
-      context.fillStyle = config.color || '#00ff00';
+      // Настройки шрифта
+      const fontSize = config.fontSize || 60;
+      context.font = `bold ${fontSize}px SevenSegment`;
+      context.fillStyle = config.color || '#FF1616';
       context.textAlign = 'center';
       context.textBaseline = 'middle';
-      context.fillText(text, canvas.width/2, canvas.height/2);
+
+      // Для моноширинного эффекта - отрисовываем каждый символ отдельно
+      // с фиксированным расстоянием между ними
+      const charSpacing = 33; // Фиксированное расстояние между символами
+      const verticalOffset = 2;
+
+      // Центрируем всю строку
+      const totalWidth = (text.length - 1) * charSpacing;
+      const startX = (canvas.width - totalWidth) / 2;
+
+      // Рисуем каждый символ в своей позиции
+      for (let i = 0; i < text.length; i++) {
+        const char: string | undefined = text[i]?.toString();
+        const x = startX + (i * charSpacing);
+        if (char != null) {
+          context.fillText(char, x, canvas.height / 2 + verticalOffset);
+        }
+      }
 
       // Обновляем текстуру
       if (material.map) {
@@ -1367,6 +1384,12 @@ export default defineComponent({
 </script>
 
 <style scoped>
+@font-face {
+  font-family: 'SevenSegment';
+  src: url('/fonts/Seven Segment.ttf') format('truetype');
+  font-display: swap;
+}
+
 h2, h4 {
   color: #000000;
 }
