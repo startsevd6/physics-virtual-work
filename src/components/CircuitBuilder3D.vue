@@ -243,6 +243,16 @@ type Slot3D = {
   allowedTypes: string[];
 };
 
+// Тип для декоративных элементов
+type DecorativeElement = {
+  name: string;
+  path: string;
+  position: THREE.Vector3;
+  rotation: THREE.Euler;
+  scale: number;
+  shadowEnabled: boolean;
+};
+
 export default defineComponent({
   name: 'CircuitBuilder3D',
   components: {
@@ -265,7 +275,7 @@ export default defineComponent({
     const showError = ref(false);
     const errorMessage = ref('');
     const selectedThermistorKind = ref('metal');
-    const showShadows = ref(true); // Состояние для теней
+    const showShadows = ref(true);
 
     // Слоты для компонентов (3D позиции)
     const slots = reactive<Slot3D[]>([
@@ -299,6 +309,303 @@ export default defineComponent({
     ]);
 
     const snapshots = ref<any[]>([]);
+    const decorativeElements = ref<THREE.Object3D[]>([]); // Храним ссылки на декоративные элементы
+
+    // Конфигурация декоративных элементов
+    const decorativeConfigs: DecorativeElement[] = [
+      // Красная кнопка для вольтамперметра
+      {
+        name: 'red_button_for_ammeter',
+        path: '/models/red_button.glb',
+        position: new THREE.Vector3(-1.185, 0.22, 0.585),
+        rotation: new THREE.Euler(0, Math.PI/2, 0),
+        scale: 0.1,
+        shadowEnabled: true
+      },
+
+      // Кнопки для вольтамперметра
+      {
+        name: 'button_1_2',
+        path: '/models/button_1.glb',
+        position: new THREE.Vector3(-0.815, 0.32, 0.585),
+        rotation: new THREE.Euler(0, -Math.PI/2, 0),
+        scale: 0.11,
+        shadowEnabled: true
+      },
+      {
+        name: 'button_1_20',
+        path: '/models/button_1.glb',
+        position: new THREE.Vector3(-0.725, 0.32, 0.585),
+        rotation: new THREE.Euler(0, -Math.PI/2, 0),
+        scale: 0.11,
+        shadowEnabled: true
+      },
+      {
+        name: 'button_1_200',
+        path: '/models/button_1.glb',
+        position: new THREE.Vector3(-0.635, 0.32, 0.585),
+        rotation: new THREE.Euler(0, -Math.PI/2, 0),
+        scale: 0.11,
+        shadowEnabled: true
+      },
+      {
+        name: 'button_2_2',
+        path: '/models/button_2.glb',
+        position: new THREE.Vector3(-0.815, 0.4, 0.585),
+        rotation: new THREE.Euler(0, -Math.PI/2, 0),
+        scale: 0.11,
+        shadowEnabled: true
+      },
+      {
+        name: 'button_2_20',
+        path: '/models/button_2.glb',
+        position: new THREE.Vector3(-0.725, 0.4, 0.585),
+        rotation: new THREE.Euler(0, -Math.PI/2, 0),
+        scale: 0.11,
+        shadowEnabled: true
+      },
+      {
+        name: 'button_2_200',
+        path: '/models/button_2.glb',
+        position: new THREE.Vector3(-0.635, 0.4, 0.585),
+        rotation: new THREE.Euler(0, -Math.PI/2, 0),
+        scale: 0.11,
+        shadowEnabled: true
+      },
+      {
+        name: 'button_3_1',
+        path: '/models/button_3.glb',
+        position: new THREE.Vector3(-0.795, 0.22, 0.585),
+        rotation: new THREE.Euler(0, -Math.PI/2, 0),
+        scale: 0.09,
+        shadowEnabled: true
+      },
+      {
+        name: 'button_3_2',
+        path: '/models/button_3.glb',
+        position: new THREE.Vector3(-0.725, 0.22, 0.585),
+        rotation: new THREE.Euler(0, -Math.PI/2, 0),
+        scale: 0.09,
+        shadowEnabled: true
+      },
+      {
+        name: 'button_3_3',
+        path: '/models/button_3.glb',
+        position: new THREE.Vector3(-0.655, 0.22, 0.585),
+        rotation: new THREE.Euler(0, -Math.PI/2, 0),
+        scale: 0.09,
+        shadowEnabled: true
+      },
+
+      // Порты для вольтамперметра
+      {
+        name: 'port_1_1',
+        path: '/models/port.glb',
+        position: new THREE.Vector3(-1.06, 0.22, 0.585),
+        rotation: new THREE.Euler(0, -Math.PI/2, 0),
+        scale: 0.1,
+        shadowEnabled: true
+      },
+      {
+        name: 'port_1_2',
+        path: '/models/port.glb',
+        position: new THREE.Vector3(-0.97, 0.22, 0.585),
+        rotation: new THREE.Euler(0, -Math.PI/2, 0),
+        scale: 0.1,
+        shadowEnabled: true
+      },
+      {
+        name: 'port_1_3',
+        path: '/models/port.glb',
+        position: new THREE.Vector3(-0.385, 0.22, 0.585),
+        rotation: new THREE.Euler(0, -Math.PI/2, 0),
+        scale: 0.1,
+        shadowEnabled: true
+      },
+      {
+        name: 'port_1_4',
+        path: '/models/port.glb',
+        position: new THREE.Vector3(-0.305, 0.22, 0.585),
+        rotation: new THREE.Euler(0, -Math.PI/2, 0),
+        scale: 0.1,
+        shadowEnabled: true
+      },
+
+      // Красная кнопка для источника напряжения
+      {
+        name: 'red_button_for_voltage_source',
+        path: '/models/red_button.glb',
+        position: new THREE.Vector3(-1.2, -0.1, 0.585),
+        rotation: new THREE.Euler(0, Math.PI/2, 0),
+        scale: 0.1,
+        shadowEnabled: true
+      },
+
+      // Порты для источника напряжения
+      {
+        name: 'port_2_1',
+        path: '/models/port.glb',
+        position: new THREE.Vector3(-1.1, 0.06, 0.585),
+        rotation: new THREE.Euler(0, -Math.PI/2, 0),
+        scale: 0.1,
+        shadowEnabled: true
+      },
+      {
+        name: 'port_2_2',
+        path: '/models/port.glb',
+        position: new THREE.Vector3(-1.015, 0.06, 0.585),
+        rotation: new THREE.Euler(0, -Math.PI/2, 0),
+        scale: 0.1,
+        shadowEnabled: true
+      },
+      {
+        name: 'port_2_3',
+        path: '/models/port.glb',
+        position: new THREE.Vector3(-0.825, 0.06, 0.585),
+        rotation: new THREE.Euler(0, -Math.PI/2, 0),
+        scale: 0.1,
+        shadowEnabled: true
+      },
+      {
+        name: 'port_2_4',
+        path: '/models/port.glb',
+        position: new THREE.Vector3(-0.745, 0.06, 0.585),
+        rotation: new THREE.Euler(0, -Math.PI/2, 0),
+        scale: 0.1,
+        shadowEnabled: true
+      },
+
+      // Спиннеры для источника напряжения
+      {
+        name: 'spinner_for_voltage_1',
+        path: '/models/spinner_for_voltage_source.glb',
+        position: new THREE.Vector3(-0.94, -0.05, 0.585),
+        rotation: new THREE.Euler(-Math.PI/2, -3*Math.PI/4, -Math.PI/2),
+        scale: 0.1,
+        shadowEnabled: true
+      },
+      {
+        name: 'spinner_for_voltage_2',
+        path: '/models/spinner_for_voltage_source.glb',
+        position: new THREE.Vector3(-0.67, -0.05, 0.585),
+        rotation: new THREE.Euler(-Math.PI/2, -3*Math.PI/4, -Math.PI/2),
+        scale: 0.1,
+        shadowEnabled: true
+      },
+
+      // Спиннер для терморезистора
+      {
+        name: 'spinner_for_thermistor',
+        path: '/models/spinner_for_thermistor.glb',
+        position: new THREE.Vector3(1.07, 0.05, 0),
+        rotation: new THREE.Euler(0, -Math.PI/2, 0),
+        scale: 0.1,
+        shadowEnabled: true
+      },
+
+      // Большая красная кнопка
+      /*{
+        name: 'red_big_button',
+        path: '/models/red_big_button.glb',
+        position: new THREE.Vector3(-1.5, 0.2, -2),
+        rotation: new THREE.Euler(0, Math.PI/4, 0),
+        scale: 1.2,
+        shadowEnabled: true
+      },*/
+    ];
+
+    // Функция для добавления декоративных элементов
+    async function addDecorativeElements() {
+      if (!scene || !loader) return;
+
+      for (const config of decorativeConfigs) {
+        try {
+          const gltf = await new Promise<any>((resolve, reject) => {
+            loader!.load(
+                config.path,
+                (gltf) => resolve(gltf),
+                undefined,
+                (error) => reject(error)
+            );
+          });
+
+          const model = gltf.scene;
+
+          // Настройка модели
+          model.position.copy(config.position);
+          model.rotation.copy(config.rotation);
+          model.scale.set(config.scale, config.scale, config.scale);
+
+          // Настройка теней
+          model.traverse((child: THREE.Mesh) => {
+            if (child.isMesh) {
+              child.castShadow = config.shadowEnabled && showShadows.value;
+              child.receiveShadow = config.shadowEnabled && showShadows.value;
+            }
+          });
+
+          scene.add(model);
+          decorativeElements.value.push(model);
+
+        } catch (error) {
+          console.warn(`Не удалось загрузить декоративную модель ${config.name}:`, error);
+          // Создаем простую геометрию в качестве заглушки
+          const fallback = createFallbackDecorative(config.name);
+          if (fallback) {
+            scene.add(fallback);
+            decorativeElements.value.push(fallback);
+          }
+        }
+      }
+    }
+
+    // Создание заглушки для декоративных элементов
+    function createFallbackDecorative(name: string): THREE.Mesh | null {
+      let geometry: THREE.BufferGeometry;
+      let material: THREE.Material;
+      let scale = 1;
+
+      // Создаем разные геометрии в зависимости от имени элемента
+      if (name.includes('button')) {
+        geometry = new THREE.CylinderGeometry(0.2, 0.2, 0.1, 16);
+        material = new THREE.MeshStandardMaterial({
+          color: name.includes('red') ? 0xff4444 : 0x4444ff,
+          metalness: 0.7,
+          roughness: 0.3
+        });
+        scale = name.includes('big') ? 1.5 : 1;
+      } else if (name.includes('port')) {
+        geometry = new THREE.CylinderGeometry(0.15, 0.15, 0.3, 8);
+        material = new THREE.MeshStandardMaterial({
+          color: 0x888888,
+          metalness: 0.9,
+          roughness: 0.1
+        });
+      } else if (name.includes('spinner')) {
+        geometry = new THREE.TorusGeometry(0.3, 0.05, 16, 32);
+        material = new THREE.MeshStandardMaterial({
+          color: name.includes('thermistor') ? 0xffaa00 : 0x00aaff,
+          metalness: 0.6,
+          roughness: 0.4
+        });
+      } else {
+        return null;
+      }
+
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.castShadow = showShadows.value;
+      mesh.receiveShadow = showShadows.value;
+
+      // Позиционируем заглушку
+      const config = decorativeConfigs.find(c => c.name === name);
+      if (config) {
+        mesh.position.copy(config.position);
+        mesh.rotation.copy(config.rotation);
+        mesh.scale.set(scale, scale, scale);
+      }
+
+      return mesh;
+    }
 
     // Функция для переключения теней
     function toggleShadows() {
@@ -315,8 +622,19 @@ export default defineComponent({
 
       // Обходим все объекты в сцене и обновляем их тени
       scene.traverse((object) => {
-        object.castShadow = showShadows.value;
-        object.receiveShadow = showShadows.value;
+        // Для декоративных элементов проверяем, должны ли они отбрасывать тени
+        const isDecorative = decorativeElements.value.some(el => el.uuid === object.uuid);
+        if (isDecorative) {
+          const config = decorativeConfigs.find(c =>
+              object.position.equals(c.position) ||
+              object.position.distanceTo(c.position) < 0.1
+          );
+          object.castShadow = config?.shadowEnabled && showShadows.value || false;
+          object.receiveShadow = config?.shadowEnabled && showShadows.value || false;
+        } else {
+          object.castShadow = showShadows.value;
+          object.receiveShadow = showShadows.value;
+        }
       });
 
       // Также обновляем тени у направленного света
@@ -387,7 +705,7 @@ export default defineComponent({
           0.1,
           1000
       );
-      camera.position.set(0, 2, 3);
+      camera.position.set(0, 3, 5);
       camera.lookAt(0, 0, 0);
 
       // Рендерер
@@ -437,7 +755,10 @@ export default defineComponent({
       // Загрузчик моделей
       loader = new GLTFLoader();
 
-      // Инициализация компонентов сразу после создания сцены
+      // Добавляем декоративные элементы
+      addDecorativeElements();
+
+      // Инициализация компонентов схемы
       initComponents();
 
       // Анимация
@@ -760,6 +1081,13 @@ export default defineComponent({
       if (renderer) {
         renderer.dispose();
       }
+      // Очищаем декоративные элементы
+      decorativeElements.value.forEach(element => {
+        if (scene && element.parent === scene) {
+          scene.remove(element);
+        }
+      });
+      decorativeElements.value = [];
     });
 
     return {
