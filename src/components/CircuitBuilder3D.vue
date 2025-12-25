@@ -725,6 +725,168 @@ export default defineComponent({
       }
     }
 
+    // Добавляем новые конфигурации для дисплеев (текстовых плоскостей)
+    const displayConfigs = [
+      // Дисплей температуры на терморезисторе
+      {
+        name: 'thermistor_display',
+        position: new THREE.Vector3(1.04, 0.12, -0.3),
+        rotation: new THREE.Euler(-43*Math.PI/100, 0, 0),
+        scale: 0.1,
+        width: 2,
+        height: 0.8,
+        fontSize: 0.3,
+        color: 0x00ff00,
+        bgColor: 0x000000
+      },
+      // Дисплей напряжения на вольтамперметре
+      {
+        name: 'voltmeter_display_top',
+        position: new THREE.Vector3(-0.38, 0.4, 0.586),
+        rotation: new THREE.Euler(0, 0, 0),
+        scale: 0.115,
+        width: 1.5,
+        height: 0.6,
+        fontSize: 0.2,
+        color: 0x00ff00,
+        bgColor: 0x000000
+      },
+      // Дисплей тока на вольтамперметре
+      {
+        name: 'ammeter_display_bottom',
+        position: new THREE.Vector3(-1.1, 0.4, 0.586),
+        rotation: new THREE.Euler(0, 0, 0),
+        scale: 0.115,
+        width: 1.5,
+        height: 0.6,
+        fontSize: 0.2,
+        color: 0x00ff00,
+        bgColor: 0x000000
+      }
+    ];
+
+    // Добавляем refs для дисплеев
+    const thermistorDisplay = ref<THREE.Mesh | null>(null);
+    const voltmeterDisplay = ref<THREE.Mesh | null>(null);
+    const ammeterDisplay = ref<THREE.Mesh | null>(null);
+
+    // Функция для создания текстовой плоскости
+    function createTextDisplay(config: any): THREE.Mesh {
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d')!;
+      canvas.width = 256;
+      canvas.height = 128;
+
+      // Фон
+      context.fillStyle = '#000000';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Текст по умолчанию
+      context.font = 'bold 40px Arial';
+      context.fillStyle = '#00ff00';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText('0.00', canvas.width/2, canvas.height/2);
+
+      // Создаем текстуру
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.needsUpdate = true;
+
+      // Создаем материал с текстурой
+      const material = new THREE.MeshBasicMaterial({
+        map: texture,
+        side: THREE.DoubleSide,
+        transparent: true
+      });
+
+      // Создаем плоскость
+      const geometry = new THREE.PlaneGeometry(config.width, config.height);
+      const plane = new THREE.Mesh(geometry, material);
+
+      // Позиционируем
+      plane.position.copy(config.position);
+      plane.rotation.copy(config.rotation);
+      plane.scale.set(config.scale, config.scale, config.scale);
+
+      return plane;
+    }
+
+    // Функция для обновления текста на дисплее
+    function updateDisplayText(display: THREE.Mesh | null, text: string, config: any) {
+      if (!display || !display.material) return;
+
+      const material = display.material as THREE.MeshBasicMaterial;
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d')!;
+
+      canvas.width = 256;
+      canvas.height = 128;
+
+      // Фон
+      context.fillStyle = '#000000';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Текст
+      context.font = 'bold 40px Arial';
+      context.fillStyle = '#00ff00';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText(text, canvas.width/2, canvas.height/2);
+
+      // Обновляем текстуру
+      if (material.map) {
+        (material.map as THREE.CanvasTexture).image = canvas;
+        (material.map as THREE.CanvasTexture).needsUpdate = true;
+      }
+    }
+
+    // Функция для создания дисплеев
+    function createDisplays() {
+      if (!scene) return;
+
+      // Создаем дисплеи для каждого прибора
+      displayConfigs.forEach(config => {
+        const display = createTextDisplay(config);
+        scene!.add(display);
+
+        // Сохраняем ссылки
+        if (config.name === 'thermistor_display') {
+          thermistorDisplay.value = display;
+        } else if (config.name === 'voltmeter_display_top') {
+          voltmeterDisplay.value = display;
+        } else if (config.name === 'ammeter_display_bottom') {
+          ammeterDisplay.value = display;
+        }
+      });
+    }
+
+    // Функция для обновления всех дисплеев
+    function updateAllDisplays() {
+      // Обновляем дисплей температуры на терморезисторе
+      updateDisplayText(
+          thermistorDisplay.value,
+          `${globalTemp.value} K`,
+          displayConfigs.find(c => c.name === 'thermistor_display')
+      );
+
+      // Обновляем дисплей напряжения на вольтамперметре
+      const sourceSlot = slots[0];
+      const voltage = sourceSlot?.component?.data?.voltage || 0;
+      updateDisplayText(
+          voltmeterDisplay.value,
+          `${voltage.toFixed(2)} V`,
+          displayConfigs.find(c => c.name === 'voltmeter_display_top')
+      );
+
+      // Обновляем дисплей тока на вольтамперметре
+      const current = calculateCurrent();
+      updateDisplayText(
+          ammeterDisplay.value,
+          current !== null ? `${current.toFixed(2)} A` : '0.00 A',
+          displayConfigs.find(c => c.name === 'ammeter_display_bottom')
+      );
+    }
+
     // Вычисление текущего тока в цепи
     function calculateCurrent(): number | null {
       const sourceSlot = slots[0];
@@ -818,6 +980,9 @@ export default defineComponent({
       // Добавляем декоративные элементы
       addDecorativeElements();
 
+      // Создаем дисплеи для отображения значений
+      createDisplays();
+
       // Инициализация компонентов схемы
       initComponents();
 
@@ -850,6 +1015,9 @@ export default defineComponent({
 
       // Обновляем текущий ток
       updateCurrent();
+
+      // Обновляем дисплеи на приборах
+      updateAllDisplays();
 
       // Обновляем вращение спиннеров
       updateVoltageSpinnerRotation();
@@ -1066,7 +1234,7 @@ export default defineComponent({
 
       if (ammeterSlot && ammeterSlot.occupied) {
         const I = calculateCurrent();
-        snapshot.I = I !== null ? I.toFixed(4) : '—';
+        snapshot.I = I !== null ? I.toFixed(2) : '—';
       }
 
       snapshots.value.unshift(snapshot);
@@ -1109,6 +1277,7 @@ export default defineComponent({
         controls.update();
       }
 
+      updateAllDisplays();
       updateCurrent();
       updateVoltageSpinnerRotation();
       updateThermistorSpinnerRotation();
@@ -1155,6 +1324,19 @@ export default defineComponent({
         }
       });
       decorativeElements.value = [];
+
+      // Очищаем дисплеи
+      [thermistorDisplay.value, voltmeterDisplay.value, ammeterDisplay.value].forEach(display => {
+        if (display && scene && display.parent === scene) {
+          scene.remove(display);
+          if (display.material) {
+            (display.material as THREE.Material).dispose();
+          }
+          if (display.geometry) {
+            display.geometry.dispose();
+          }
+        }
+      });
     });
 
     return {
