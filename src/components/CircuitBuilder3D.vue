@@ -973,6 +973,7 @@ export default defineComponent({
       directionalLight.castShadow = showShadows.value;
       directionalLight.shadow.mapSize.width = 2048;
       directionalLight.shadow.mapSize.height = 2048;
+      directionalLight.shadow.bias = -0.0001;
       scene.add(directionalLight);
 
       // Пол
