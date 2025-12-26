@@ -39,7 +39,7 @@
           <input
               type="range"
               min="290"
-              max="380"
+              max="390"
               v-model.number="globalTemp"
               @wheel.prevent="handleWheelScroll"
           />
@@ -594,9 +594,9 @@ export default defineComponent({
     function updateThermistorSpinnerRotation() {
       if (!thermistorSpinner.value) return;
 
-      // Масштабируем температуру в угол вращения (290-380K = 0-360 градусов)
+      // Масштабируем температуру в угол вращения (290-390K = 0-315 градусов)
       const minTemp = 290;
-      const maxTemp = 380;
+      const maxTemp = 390;
       const normalizedTemp = (globalTemp.value - minTemp) / (maxTemp - minTemp);
       const rotationAngle = -normalizedTemp * Math.PI * 1.75;
 
@@ -1308,7 +1308,7 @@ export default defineComponent({
 
       let newTemp = globalTemp.value + (delta * step);
       if (newTemp < 290) newTemp = 290;
-      if (newTemp > 380) newTemp = 380;
+      if (newTemp > 390) newTemp = 390;
 
       globalTemp.value = newTemp;
       event.preventDefault();
