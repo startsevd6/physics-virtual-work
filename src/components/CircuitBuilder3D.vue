@@ -318,7 +318,7 @@ export default defineComponent({
       // Красная кнопка для вольтамперметра
       {
         name: 'red_button_for_ammeter',
-        path: '/models/red_button.glb',
+        path: './models/red_button.glb',
         position: new THREE.Vector3(-1.185, 0.22, 0.585),
         rotation: new THREE.Euler(0, Math.PI/2, 0),
         scale: 0.1,
@@ -328,7 +328,7 @@ export default defineComponent({
       // Кнопки для вольтамперметра
       {
         name: 'button_1_2',
-        path: '/models/button_1.glb',
+        path: './models/button_1.glb',
         position: new THREE.Vector3(-0.815, 0.32, 0.585),
         rotation: new THREE.Euler(0, -Math.PI/2, 0),
         scale: 0.11,
@@ -336,7 +336,7 @@ export default defineComponent({
       },
       {
         name: 'button_1_20',
-        path: '/models/button_1.glb',
+        path: './models/button_1.glb',
         position: new THREE.Vector3(-0.725, 0.32, 0.585),
         rotation: new THREE.Euler(0, -Math.PI/2, 0),
         scale: 0.11,
@@ -344,7 +344,7 @@ export default defineComponent({
       },
       {
         name: 'button_1_200',
-        path: '/models/button_1.glb',
+        path: './models/button_1.glb',
         position: new THREE.Vector3(-0.635, 0.32, 0.585),
         rotation: new THREE.Euler(0, -Math.PI/2, 0),
         scale: 0.11,
@@ -352,7 +352,7 @@ export default defineComponent({
       },
       {
         name: 'button_2_2',
-        path: '/models/button_2.glb',
+        path: './models/button_2.glb',
         position: new THREE.Vector3(-0.815, 0.4, 0.585),
         rotation: new THREE.Euler(0, -Math.PI/2, 0),
         scale: 0.11,
@@ -360,7 +360,7 @@ export default defineComponent({
       },
       {
         name: 'button_2_20',
-        path: '/models/button_2.glb',
+        path: './models/button_2.glb',
         position: new THREE.Vector3(-0.725, 0.4, 0.585),
         rotation: new THREE.Euler(0, -Math.PI/2, 0),
         scale: 0.11,
@@ -368,7 +368,7 @@ export default defineComponent({
       },
       {
         name: 'button_2_200',
-        path: '/models/button_2.glb',
+        path: './models/button_2.glb',
         position: new THREE.Vector3(-0.635, 0.4, 0.585),
         rotation: new THREE.Euler(0, -Math.PI/2, 0),
         scale: 0.11,
@@ -376,7 +376,7 @@ export default defineComponent({
       },
       {
         name: 'button_3_1',
-        path: '/models/button_3.glb',
+        path: './models/button_3.glb',
         position: new THREE.Vector3(-0.795, 0.22, 0.585),
         rotation: new THREE.Euler(0, -Math.PI/2, 0),
         scale: 0.09,
@@ -384,7 +384,7 @@ export default defineComponent({
       },
       {
         name: 'button_3_2',
-        path: '/models/button_3.glb',
+        path: './models/button_3.glb',
         position: new THREE.Vector3(-0.725, 0.22, 0.585),
         rotation: new THREE.Euler(0, -Math.PI/2, 0),
         scale: 0.09,
@@ -392,7 +392,7 @@ export default defineComponent({
       },
       {
         name: 'button_3_3',
-        path: '/models/button_3.glb',
+        path: './models/button_3.glb',
         position: new THREE.Vector3(-0.655, 0.22, 0.585),
         rotation: new THREE.Euler(0, -Math.PI/2, 0),
         scale: 0.09,
@@ -402,7 +402,7 @@ export default defineComponent({
       // Порты для вольтамперметра
       {
         name: 'port_1_1',
-        path: '/models/port.glb',
+        path: './models/port.glb',
         position: new THREE.Vector3(-1.06, 0.22, 0.585),
         rotation: new THREE.Euler(0, -Math.PI/2, 0),
         scale: 0.1,
@@ -410,7 +410,7 @@ export default defineComponent({
       },
       {
         name: 'port_1_2',
-        path: '/models/port.glb',
+        path: './models/port.glb',
         position: new THREE.Vector3(-0.97, 0.22, 0.585),
         rotation: new THREE.Euler(0, -Math.PI/2, 0),
         scale: 0.1,
@@ -418,7 +418,7 @@ export default defineComponent({
       },
       {
         name: 'port_1_3',
-        path: '/models/port.glb',
+        path: './models/port.glb',
         position: new THREE.Vector3(-0.385, 0.22, 0.585),
         rotation: new THREE.Euler(0, -Math.PI/2, 0),
         scale: 0.1,
@@ -426,7 +426,7 @@ export default defineComponent({
       },
       {
         name: 'port_1_4',
-        path: '/models/port.glb',
+        path: './models/port.glb',
         position: new THREE.Vector3(-0.305, 0.22, 0.585),
         rotation: new THREE.Euler(0, -Math.PI/2, 0),
         scale: 0.1,
@@ -436,7 +436,7 @@ export default defineComponent({
       // Красная кнопка для источника напряжения
       {
         name: 'red_button_for_voltage_source',
-        path: '/models/red_button.glb',
+        path: './models/red_button.glb',
         position: new THREE.Vector3(-1.2, -0.1, 0.585),
         rotation: new THREE.Euler(0, Math.PI/2, 0),
         scale: 0.1,
@@ -446,7 +446,7 @@ export default defineComponent({
       // Порты для источника напряжения
       {
         name: 'port_2_1',
-        path: '/models/port.glb',
+        path: './models/port.glb',
         position: new THREE.Vector3(-1.1, 0.06, 0.585),
         rotation: new THREE.Euler(0, -Math.PI/2, 0),
         scale: 0.1,
@@ -454,7 +454,7 @@ export default defineComponent({
       },
       {
         name: 'port_2_2',
-        path: '/models/port.glb',
+        path: './models/port.glb',
         position: new THREE.Vector3(-1.015, 0.06, 0.585),
         rotation: new THREE.Euler(0, -Math.PI/2, 0),
         scale: 0.1,
@@ -462,7 +462,7 @@ export default defineComponent({
       },
       {
         name: 'port_2_3',
-        path: '/models/port.glb',
+        path: './models/port.glb',
         position: new THREE.Vector3(-0.825, 0.06, 0.585),
         rotation: new THREE.Euler(0, -Math.PI/2, 0),
         scale: 0.1,
@@ -470,7 +470,7 @@ export default defineComponent({
       },
       {
         name: 'port_2_4',
-        path: '/models/port.glb',
+        path: './models/port.glb',
         position: new THREE.Vector3(-0.745, 0.06, 0.585),
         rotation: new THREE.Euler(0, -Math.PI/2, 0),
         scale: 0.1,
@@ -480,7 +480,7 @@ export default defineComponent({
       // Спиннеры для источника напряжения
       {
         name: 'spinner_for_voltage_1',
-        path: '/models/spinner_for_voltage_source.glb',
+        path: './models/spinner_for_voltage_source.glb',
         position: new THREE.Vector3(-0.94, -0.05, 0.585),
         rotation: new THREE.Euler(-Math.PI/2, -3*Math.PI/4, -Math.PI/2),
         scale: 0.1,
@@ -488,7 +488,7 @@ export default defineComponent({
       },
       {
         name: 'spinner_for_voltage_2',
-        path: '/models/spinner_for_voltage_source.glb',
+        path: './models/spinner_for_voltage_source.glb',
         position: new THREE.Vector3(-0.67, -0.05, 0.585),
         rotation: new THREE.Euler(-Math.PI/2, -3*Math.PI/4, -Math.PI/2),
         scale: 0.1,
@@ -498,7 +498,7 @@ export default defineComponent({
       // Спиннер для терморезистора
       {
         name: 'spinner_for_thermistor',
-        path: '/models/spinner_for_thermistor.glb',
+        path: './models/spinner_for_thermistor.glb',
         position: new THREE.Vector3(1.07, 0.05, 0),
         rotation: new THREE.Euler(0, -Math.PI/2, 0),
         scale: 0.1,
@@ -508,7 +508,7 @@ export default defineComponent({
       // Большая красная кнопка
       /*{
         name: 'red_big_button',
-        path: '/models/red_big_button.glb',
+        path: './models/red_big_button.glb',
         position: new THREE.Vector3(-1.5, 0.2, -2),
         rotation: new THREE.Euler(0, Math.PI/4, 0),
         scale: 1.2,
@@ -1061,13 +1061,13 @@ export default defineComponent({
         // Определяем путь к модели в зависимости от типа компонента
         switch(type) {
           case 'source':
-            modelPath = '/models/voltage_source.glb';
+            modelPath = './models/voltage_source.glb';
             break;
           case 'thermistor':
-            modelPath = '/models/thermistor.glb'; // Одинаковая модель для обоих типов
+            modelPath = './models/thermistor.glb'; // Одинаковая модель для обоих типов
             break;
           case 'amm':
-            modelPath = '/models/ammeter.glb';
+            modelPath = './models/ammeter.glb';
             break;
           default:
             return null;
