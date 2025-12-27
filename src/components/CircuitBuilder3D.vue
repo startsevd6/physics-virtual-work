@@ -1,49 +1,51 @@
 <template>
-  <div>
-    <h2>Сборка схемы (3D)</h2>
+  <div class="circuit-container">
     <div class="circuit-3d-container">
       <div class="controls-panel">
         <h4>Управление</h4>
 
-        <div class="shadow-control">
-          <label>Тени:</label>
-          <button class="shadow-toggle-btn" @click="toggleShadows">
-            {{ showShadows ? 'Выключить' : 'Включить' }}
-          </button>
-        </div>
-
-        <div class="thermistor-type-selector">
-          <label>Тип терморезистора:</label>
-          <div class="radio-group">
-            <label>
-              <input
-                  type="radio"
-                  value="metal"
-                  v-model="selectedThermistorKind"
-              />
-              Металлический
-            </label>
-            <label>
-              <input
-                  type="radio"
-                  value="semiconductor"
-                  v-model="selectedThermistorKind"
-              />
-              Полупроводниковый
-            </label>
+        <div class="controls-panel-wrapper">
+          <div class="shadow-control">
+            <label>Тени:</label>
+            <button class="shadow-toggle-btn" @click="toggleShadows">
+              {{ showShadows ? 'Выключить' : 'Включить' }}
+            </button>
           </div>
-        </div>
 
-        <div class="temperature-control">
-          <label>Температура (K)</label>
-          <input
-              type="range"
-              min="290"
-              max="390"
-              v-model.number="globalTemp"
-              @wheel.prevent="handleWheelScroll"
-          />
-          <div>{{ globalTemp }} K</div>
+          <div class="thermistor-type-selector">
+            <label>Тип терморезистора:</label>
+            <div class="radio-group">
+              <label>
+                <input
+                    type="radio"
+                    value="metal"
+                    v-model="selectedThermistorKind"
+                />
+                Металлический
+              </label>
+              <label>
+                <input
+                    type="radio"
+                    value="semiconductor"
+                    v-model="selectedThermistorKind"
+                />
+                Полупроводниковый
+              </label>
+            </div>
+          </div>
+
+          <div class="temperature-control">
+            <label>Температура (K)</label>
+            <input
+                type="range"
+                min="290"
+                max="390"
+                v-model.number="globalTemp"
+                class="slider"
+                @wheel.prevent="handleWheelScroll"
+            />
+            <div>{{ globalTemp }} K</div>
+          </div>
         </div>
       </div>
 
@@ -77,23 +79,18 @@
     </div>
 
     <div class="measurements-section">
-      <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
-        <button @click="saveSnapshot">Сохранить показания</button>
-        <button @click="resetValues">Сброс</button>
-      </div>
-
-      <div style="margin-top:12px">
+      <div>
         <h4>Текущие компоненты в схеме</h4>
         <div class="current-components">
           <div v-for="(slot, idx) in slots" :key="idx" class="slot-info">
-            <div class="slot-label">{{ slot.label }}</div>
+            <div v-if="!slot.component" class="slot-label">{{ slot.label }}</div>
             <div v-if="slot.component" class="slot-content">
               <!-- Источник напряжения -->
               <div v-if="slot.component.data.type === 'source'">
                 <strong>Источник напряжения</strong>
                 <div class="component-params">
                   <div class="param-row">
-                    <label>Напряжение (В):</label>
+                    <label>Напряжение:</label>
                     <div class="param-controls">
                       <input
                           type="range"
@@ -101,7 +98,7 @@
                           max="15"
                           step="0.1"
                           v-model.number="slot.component.data.voltage"
-                          class="voltage-slider"
+                          class="slider"
                       />
                       <input
                           type="number"
@@ -109,7 +106,7 @@
                           max="15"
                           step="0.1"
                           v-model.number="slot.component.data.voltage"
-                          class="voltage-input"
+                          class="input"
                       />
                       <span class="param-unit">В</span>
                     </div>
@@ -124,49 +121,51 @@
               <div v-else-if="slot.component.data.type === 'thermistor'">
                 <strong>{{ slot.component.data.kind === 'metal' ? 'Металлический' : 'Полупроводниковый' }} терморезистор</strong>
                 <div class="component-params">
-                  <div class="param-row">
-                    <label>R0 (Ω):</label>
-                    <div class="param-controls">
-                      <input
-                          type="number"
-                          min="1"
-                          max="10000"
-                          step="1"
-                          v-model.number="slot.component.data.R0"
-                          class="param-input"
-                      />
-                      <span class="param-unit">Ω</span>
-                    </div>
-                  </div>
-
-                  <div v-if="slot.component.data.kind === 'metal'">
+                  <div class="params-column">
                     <div class="param-row">
-                      <label>α (1/K):</label>
+                      <label>R0 (Ω):</label>
                       <div class="param-controls">
                         <input
                             type="number"
-                            min="0.001"
-                            max="0.01"
-                            step="0.0001"
-                            v-model.number="slot.component.data.alpha"
-                            class="param-input"
+                            min="1"
+                            max="10000"
+                            step="1"
+                            v-model.number="slot.component.data.R0"
+                            class="input"
                         />
+                        <span class="param-unit">Ω</span>
                       </div>
                     </div>
-                  </div>
-                  <div v-else>
-                    <div class="param-row">
-                      <label>B (K):</label>
-                      <div class="param-controls">
-                        <input
-                            type="number"
-                            min="1000"
-                            max="5000"
-                            step="1"
-                            v-model.number="slot.component.data.B"
-                            class="param-input"
-                        />
-                        <span class="param-unit">K</span>
+
+                    <div v-if="slot.component.data.kind === 'metal'">
+                      <div class="param-row">
+                        <label>α (1/K):</label>
+                        <div class="param-controls">
+                          <input
+                              type="number"
+                              min="0.001"
+                              max="0.01"
+                              step="0.0001"
+                              v-model.number="slot.component.data.alpha"
+                              class="input"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div v-else>
+                      <div class="param-row">
+                        <label>B (K):</label>
+                        <div class="param-controls">
+                          <input
+                              type="number"
+                              min="1000"
+                              max="5000"
+                              step="1"
+                              v-model.number="slot.component.data.B"
+                              class="input"
+                          />
+                          <span class="param-unit">K</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -199,39 +198,42 @@
           </div>
         </div>
       </div>
-
-      <div style="margin-top:12px">
-        <h4>Сохранённые показания</h4>
-        <div class="snapshots-table">
-          <table>
-            <thead>
-            <tr>
-              <th>Напряжение (В)</th>
-              <th>Ток (А)</th>
-              <th>Сопротивление (Ω)</th>
-              <th>Температура (K)</th>
-              <th>Тип терморезистора</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr v-for="(s,i) in snapshots" :key="i">
-              <td>{{ s.V }}</td>
-              <td>{{ s.I || '—' }}</td>
-              <td>{{ s.R || '—' }}</td>
-              <td>{{ s.T }}</td>
-              <td>{{ getThermistorTypeLabel(s.thermistorType) }}</td>
-            </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
-
     <ErrorPopup
         v-if="showError"
         :message="errorMessage"
         @close="showError = false"
     />
+  </div>
+
+  <div class="saved-readings">
+    <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+      <button @click="saveSnapshot">Сохранить показания</button>
+      <button @click="resetValues">Сброс</button>
+    </div>
+    <h4>Сохранённые показания</h4>
+    <div class="snapshots-table">
+      <table>
+        <thead>
+        <tr>
+          <th>Напряжение (В)</th>
+          <th>Ток (А)</th>
+          <th>Сопротивление (Ω)</th>
+          <th>Температура (K)</th>
+          <th>Тип терморезистора</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-for="(s,i) in snapshots" :key="i">
+          <td>{{ s.V }}</td>
+          <td>{{ s.I || '—' }}</td>
+          <td>{{ s.R || '—' }}</td>
+          <td>{{ s.T }}</td>
+          <td>{{ getThermistorTypeLabel(s.thermistorType) }}</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
@@ -1460,10 +1462,14 @@ strong, div {
   color: #222222;
 }
 
+.circuit-container {
+  display: flex;
+  gap: 20px;
+}
+
 .circuit-3d-container {
   display: flex;
   gap: 20px;
-  margin-bottom: 20px;
 }
 
 .controls-panel {
@@ -1478,11 +1484,12 @@ strong, div {
 .scene-container {
   flex: 1;
   position: relative;
+  width: calc(100vw - 900px);
 }
 
 .three-scene {
   width: 100%;
-  height: 500px;
+  height: 707px;
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(0,0,0,0.15);
@@ -1647,20 +1654,6 @@ strong, div {
   margin: 8px 0;
 }
 
-.scene-container {
-  flex: 1;
-  position: relative;
-}
-
-.three-scene {
-  width: 100%;
-  height: 500px;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
 .measurements-section {
   background: #fff;
   border-radius: 8px;
@@ -1670,7 +1663,7 @@ strong, div {
 
 .current-components {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(416px, 1fr));
   gap: 16px;
   margin-top: 12px;
 }
@@ -1696,18 +1689,23 @@ strong, div {
   border: 1px solid #e5e7eb;
 }
 
+.params-column {
+  display: flex;
+  justify-content: space-around;
+}
+
 .param-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 10px;
+  gap: 10px;
 }
 
 .param-row label {
   font-weight: 500;
   color: #4b5563;
   font-size: 14px;
-  min-width: 80px;
 }
 
 .param-controls {
@@ -1717,17 +1715,18 @@ strong, div {
   flex: 1;
 }
 
-.voltage-slider {
+.slider {
   flex: 1;
-  height: 6px;
+  max-height: 6px;
   border-radius: 3px;
   background: #e5e7eb;
   outline: none;
   -webkit-appearance: none;
   appearance: none;
+  cursor: pointer;
 }
 
-.voltage-slider::-webkit-slider-thumb {
+.slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 18px;
@@ -1737,7 +1736,7 @@ strong, div {
   cursor: pointer;
 }
 
-.voltage-slider::-moz-range-thumb {
+.slider::-moz-range-thumb {
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -1746,7 +1745,7 @@ strong, div {
   border: none;
 }
 
-.voltage-input, .param-input {
+.input {
   width: 80px;
   padding: 6px 8px;
   border: 1px solid #d1d5db;
@@ -1756,10 +1755,10 @@ strong, div {
   appearance: textfield;
 }
 
-.voltage-input::-webkit-inner-spin-button,
-.voltage-input::-webkit-outer-spin-button,
-.param-input::-webkit-inner-spin-button,
-.param-input::-webkit-outer-spin-button {
+.input::-webkit-inner-spin-button,
+.input::-webkit-outer-spin-button,
+.input::-webkit-inner-spin-button,
+.input::-webkit-outer-spin-button {
   -webkit-appearance: none;
   appearance: none;
   margin: 0;
@@ -1800,7 +1799,7 @@ strong, div {
 }
 
 .snapshots-table {
-  margin-top: 16px;
+  margin: 16px 0;
   overflow-x: auto;
 }
 
@@ -1845,5 +1844,43 @@ button:hover {
 
 button:active {
   transform: translateY(0);
+}
+
+@media (max-width: 1900px) {
+  .circuit-container {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 1300px) {
+  .circuit-3d-container {
+    flex-direction: column-reverse;
+  }
+
+  .controls-panel {
+    width: 100%;
+  }
+
+  .controls-panel-wrapper {
+    display: flex;
+    justify-content: space-around;
+  }
+
+  .scene-container {
+    width: 100%;
+  }
+}
+
+@media (max-width: 700px) {
+  .current-components {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .controls-panel-wrapper,
+  .param-row,
+  .param-controls {
+    flex-direction: column;
+  }
 }
 </style>
