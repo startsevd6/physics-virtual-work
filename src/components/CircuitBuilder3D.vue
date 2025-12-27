@@ -730,38 +730,35 @@ export default defineComponent({
       // Дисплей температуры на терморезисторе
       {
         name: 'thermistor_display',
-        position: new THREE.Vector3(1.04, 0.12, -0.3),
-        rotation: new THREE.Euler(-43*Math.PI/100, 0, 0),
+        position: new THREE.Vector3(1.0375, 0.1199, -0.305),
+        rotation: new THREE.Euler(-43.25*Math.PI/100, 0, 0),
         scale: 0.1,
-        width: 2,
-        height: 0.8,
-        fontSize: 60,
-        color: "#FF1616",
-        bgColor: 0x000000
+        width: 2.1,
+        height: 1,
+        fontSize: 80,
+        color: "#FF1616"
       },
       // Дисплей напряжения на вольтамперметре
       {
         name: 'voltmeter_display_top',
-        position: new THREE.Vector3(-0.38, 0.4, 0.586),
+        position: new THREE.Vector3(-0.374, 0.393, 0.586),
         rotation: new THREE.Euler(0, 0, 0),
         scale: 0.115,
-        width: 1.5,
-        height: 0.6,
-        fontSize: 60,
-        color: "#FF1616",
-        bgColor: 0x000000
+        width: 1.95,
+        height: 0.7,
+        fontSize: 80,
+        color: "#FF1616"
       },
       // Дисплей тока на вольтамперметре
       {
         name: 'ammeter_display_bottom',
-        position: new THREE.Vector3(-1.1, 0.4, 0.586),
+        position: new THREE.Vector3(-1.107, 0.393, 0.586),
         rotation: new THREE.Euler(0, 0, 0),
         scale: 0.115,
-        width: 1.5,
-        height: 0.6,
-        fontSize: 60,
-        color: "#FF1616",
-        bgColor: 0x000000
+        width: 1.95,
+        height: 0.7,
+        fontSize: 80,
+        color: "#FF1616"
       }
     ];
 
@@ -778,11 +775,11 @@ export default defineComponent({
       canvas.height = 128;
 
       // Фон
-      context.fillStyle = '#000000';
+      context.fillStyle = '#000011';
       context.fillRect(0, 0, canvas.width, canvas.height);
 
       // Текст по умолчанию
-      context.font = 'bold 60px SevenSegment';
+      context.font = 'bold 80px SevenSegment';
       context.fillStyle = '#FF1616';
       context.textAlign = 'center';
       context.textBaseline = 'middle';
@@ -827,7 +824,7 @@ export default defineComponent({
       context.fillRect(0, 0, canvas.width, canvas.height);
 
       // Настройки шрифта
-      const fontSize = config.fontSize || 60;
+      const fontSize = config.fontSize || 80;
       context.font = `bold ${fontSize}px SevenSegment`;
       context.fillStyle = config.color || '#FF1616';
       context.textAlign = 'center';
@@ -835,7 +832,7 @@ export default defineComponent({
 
       // Для моноширинного эффекта - отрисовываем каждый символ отдельно
       // с фиксированным расстоянием между ними
-      const charSpacing = 33; // Фиксированное расстояние между символами
+      const charSpacing = 44; // Фиксированное расстояние между символами
       const verticalOffset = 2;
 
       // Центрируем всю строку
@@ -843,11 +840,25 @@ export default defineComponent({
       const startX = (canvas.width - totalWidth) / 2;
 
       // Рисуем каждый символ в своей позиции
+      let dotCounter = 0;
+      if (text.length < 5 && (config.name === 'voltmeter_display_top' || config.name === 'ammeter_display_bottom')) {
+        text = '⠀' + text;
+      }
       for (let i = 0; i < text.length; i++) {
         const char: string | undefined = text[i]?.toString();
-        const x = startX + (i * charSpacing);
+        let x = startX + (i * charSpacing);
         if (char != null) {
-          context.fillText(char, x, canvas.height / 2 + verticalOffset);
+          if (char === '.') {
+            x += charSpacing * 0.5;
+            dotCounter += 1;
+          }
+          if (char === '1') {
+            x += charSpacing * 0.3;
+          }
+          if (text[0] === '1') {
+            x += charSpacing * 0.5;
+          }
+          context.fillText(char, x - charSpacing * dotCounter, canvas.height / 2 + verticalOffset);
         }
       }
 
@@ -883,7 +894,7 @@ export default defineComponent({
       // Обновляем дисплей температуры на терморезисторе
       updateDisplayText(
           thermistorDisplay.value,
-          `${globalTemp.value} K`,
+          `${globalTemp.value}`,
           displayConfigs.find(c => c.name === 'thermistor_display')
       );
 
@@ -892,7 +903,7 @@ export default defineComponent({
       const voltage = sourceSlot?.component?.data?.voltage || 0;
       updateDisplayText(
           voltmeterDisplay.value,
-          `${voltage.toFixed(2)} V`,
+          `${voltage.toFixed(2)}`,
           displayConfigs.find(c => c.name === 'voltmeter_display_top')
       );
 
@@ -900,7 +911,7 @@ export default defineComponent({
       const current = calculateCurrent();
       updateDisplayText(
           ammeterDisplay.value,
-          current !== null ? `${current.toFixed(2)} A` : '0.00 A',
+          current !== null ? `${current.toFixed(2)}` : '0.00',
           displayConfigs.find(c => c.name === 'ammeter_display_bottom')
       );
     }
