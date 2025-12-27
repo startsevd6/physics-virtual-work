@@ -48,10 +48,30 @@
       </div>
 
       <div class="scene-container">
+        <!-- Оверлей загрузки -->
+        <div v-if="isLoading" class="loading-overlay">
+          <div class="loading-content">
+            <div class="spinner"></div>
+            <div class="loading-text">Загрузка 3D-моделей...</div>
+            <div class="loading-progress">
+              <div class="progress-bar">
+                <div
+                    class="progress-fill"
+                    :style="{ width: loadingProgress + '%' }"
+                ></div>
+              </div>
+              <div class="progress-text">
+                {{ loadedModelsCount }} / {{ totalModelsCount }}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div
             id="scene3d"
             ref="sceneContainer"
             class="three-scene"
+            :class="{ 'loading': isLoading }"
         ></div>
       </div>
     </div>
@@ -278,6 +298,24 @@ export default defineComponent({
     const showShadows = ref(true);
     const voltageSpinner = ref<THREE.Object3D | null>(null);
     const thermistorSpinner = ref<THREE.Object3D | null>(null);
+
+    // Состояние загрузки
+    const isLoading = ref(true);
+    const loadedModelsCount = ref(0);
+    const totalModelsCount = ref(0);
+    const loadingProgress = ref(0);
+
+    // Функция для обновления прогресса загрузки
+    function incrementLoadedModels() {
+      loadedModelsCount.value++;
+      loadingProgress.value = Math.round((loadedModelsCount.value / totalModelsCount.value) * 100);
+
+      if (loadedModelsCount.value >= totalModelsCount.value) {
+        setTimeout(() => {
+          isLoading.value = false;
+        }, 500); // Небольшая задержка для плавности
+      }
+    }
 
     // Слоты для компонентов (3D позиции)
     const slots = reactive<Slot3D[]>([
@@ -520,6 +558,9 @@ export default defineComponent({
     async function addDecorativeElements() {
       if (!scene || !loader) return;
 
+      // Увеличиваем общее количество моделей
+      totalModelsCount.value += decorativeConfigs.length;
+
       for (const config of decorativeConfigs) {
         try {
           const gltf = await new Promise<any>((resolve, reject) => {
@@ -556,6 +597,8 @@ export default defineComponent({
             thermistorSpinner.value = model;
           }
 
+          incrementLoadedModels();
+
         } catch (error) {
           console.warn(`Не удалось загрузить декоративную модель ${config.name}:`, error);
           // Создаем простую геометрию в качестве заглушки
@@ -571,6 +614,7 @@ export default defineComponent({
               thermistorSpinner.value = fallback;
             }
           }
+          incrementLoadedModels();
         }
       }
     }
@@ -1383,6 +1427,12 @@ export default defineComponent({
       voltageSpinner,
       thermistorSpinner,
 
+      // Состояние загрузки
+      isLoading,
+      loadedModelsCount,
+      totalModelsCount,
+      loadingProgress,
+
       // Methods
       handleWheelScroll,
       saveSnapshot,
@@ -1422,6 +1472,109 @@ strong, div {
   border-radius: 8px;
   padding: 16px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  position: relative;
+}
+
+.scene-container {
+  flex: 1;
+  position: relative;
+}
+
+.three-scene {
+  width: 100%;
+  height: 500px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.three-scene.loading {
+  filter: blur(2px);
+  opacity: 0.7;
+}
+
+/* Оверлей загрузки */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  border-radius: 8px;
+}
+
+.loading-content {
+  text-align: center;
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  max-width: 400px;
+  width: 90%;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #4f46e5;
+  border-radius: 50%;
+  margin: 0 auto 20px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 15px;
+}
+
+.loading-progress {
+  margin-top: 20px;
+}
+
+.progress-bar {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4f46e5, #7c3aed);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+@keyframes spin-small {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-info div {
+  display: inline-block;
+  vertical-align: middle;
+  font-size: 14px;
+  color: #0369a1;
 }
 
 .shadow-control {
