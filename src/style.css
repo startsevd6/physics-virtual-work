@@ -78,6 +78,10 @@ li {
     max-width: 170px;
 }
 
+.saved-readings {
+    margin-top: 16px;
+}
+
 .saved-readings:hover {
     color: white;
 }

@@ -15,6 +15,7 @@
   "dependencies": {
     "@tweenjs/tween.js": "^25.0.0",
     "@types/three": "^0.182.0",
+    "chart.js": "^4.5.1",
     "dat.gui": "^0.7.9",
     "three": "^0.182.0",
     "vue": "^3.5.24"
@@ -46,7 +47,10 @@
     "win": {
       "target": [
         {
-          "target": ["portable", "nsis"],
+          "target": [
+            "portable",
+            "nsis"
+          ],
           "arch": [
             "x64"
           ]
