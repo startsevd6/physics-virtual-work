@@ -826,18 +826,6 @@ export default defineComponent({
       }
     }
 
-    // Расчет сопротивления для металлического терморезистора
-    function calculateMetalResistance(T: number, R0: number, alpha: number): number {
-      const T0 = 300;
-      return R0 * (1 + alpha * (T - T0));
-    }
-
-    // Расчет сопротивления для полупроводникового терморезистора
-    function calculateSemiconductorResistance(T: number, R0: number, B: number): number {
-      const T0 = 300;
-      return R0 * Math.exp(B * (1 / T - 1 / T0));
-    }
-
     // Добавляем новые конфигурации для дисплеев (текстовых плоскостей)
     const displayConfigs = [
       // Дисплей температуры на терморезисторе
@@ -1075,72 +1063,52 @@ export default defineComponent({
         uiChart.destroy();
       }
 
-      // Получаем данные из текущих компонентов
-      const thermistorSlot = slots[1];
-      let metalParams, semiParams;
+  // Фильтруем данные из таблицы сохранённых показаний
+  // Только записи с T=300 и напряжением от 2 до 4 В
+  const filteredSnapshots = snapshots.value.filter(s => {
+    return s.T === 300 && s.V >= 2 && s.V <= 4;
+  });
 
-      if (thermistorSlot?.component) {
-        if (thermistorSlot.component.data.kind === 'metal') {
-          metalParams = thermistorSlot.component.data;
-          semiParams = {
-            R0: 1000,
-            B: 3500,
-            kind: 'semiconductor'
-          };
-        } else {
-          semiParams = thermistorSlot.component.data;
-          metalParams = {
-            R0: 100,
-            alpha: 0.0039,
-            kind: 'metal'
-          };
-        }
-      } else {
-        metalParams = { R0: 100, alpha: 0.0039, kind: 'metal' };
-        semiParams = { R0: 1000, B: 3500, kind: 'semiconductor' };
-      }
+  // Разделяем данные по типу терморезистора
+  const metalData = filteredSnapshots
+      .filter(s => s.thermistorType === 'metal')
+      .map(s => ({
+        x: parseFloat(s.I || 0), // ток
+        y: parseFloat(s.V) // напряжение
+      }));
 
-      const T = 300; // Фиксированная температура
-
-      // Расчет сопротивлений при T=300K
-      const R_metal = calculateMetalResistance(T, metalParams.R0, metalParams.alpha);
-      const R_semi = calculateSemiconductorResistance(T, semiParams.R0, semiParams.B);
-
-      // Генерация данных для графика
-      const maxCurrent = 0.1; // Максимальный ток 100мА
-      const step = 0.002; // Шаг
-      const currents: number[] = [];
-      const voltagesMetal: number[] = [];
-      const voltagesSemi: number[] = [];
-
-      for (let I = 0; I <= maxCurrent; I += step) {
-        currents.push(I);
-        voltagesMetal.push(I * R_metal);
-        voltagesSemi.push(I * R_semi);
-      }
+  const semiData = filteredSnapshots
+      .filter(s => s.thermistorType === 'semiconductor')
+      .map(s => ({
+        x: parseFloat(s.I || 0), // ток
+        y: parseFloat(s.V) // напряжение
+      }));
 
       uiChart = new Chart(ctx, {
-        type: 'line',
+        type: 'scatter',
         data: {
-          labels: currents.map(c => c.toFixed(3)),
           datasets: [
             {
               label: 'Металлический терморезистор',
-              data: voltagesMetal,
+              data: metalData,
               borderColor: 'rgba(54, 162, 235, 1)',
               backgroundColor: 'rgba(54, 162, 235, 0.1)',
               borderWidth: 2,
-              tension: 0.4,
-              fill: false
+              pointRadius: 5,
+              pointHoverRadius: 7,
+              showLine: true,
+              fill: false,
             },
             {
               label: 'Полупроводниковый терморезистор',
-              data: voltagesSemi,
+              data: semiData,
               borderColor: 'rgba(255, 99, 132, 1)',
               backgroundColor: 'rgba(255, 99, 132, 0.1)',
               borderWidth: 2,
-              tension: 0.4,
-              fill: false
+              pointRadius: 5,
+              pointHoverRadius: 7,
+              showLine: true,
+              fill: false,
             }
           ]
         },
@@ -1165,7 +1133,8 @@ export default defineComponent({
                   if (label) {
                     label += ': ';
                   }
-                  label += `U = ${context.parsed.y?.toFixed(2)} В, I = ${currents[context.dataIndex]?.toFixed(3)} А`;
+                  const point = context.raw as { x: number; y: number };
+                  label += `U = ${point.y?.toFixed(2)} В, I = ${point.x?.toFixed(4)} А`;
                   return label;
                 }
               }
@@ -1196,7 +1165,9 @@ export default defineComponent({
               },
               grid: {
                 color: 'rgba(0, 0, 0, 0.1)'
-              }
+              },
+              min: 0,
+              max: 4.5,
             }
           }
         }
@@ -1214,67 +1185,52 @@ export default defineComponent({
         rtChart.destroy();
       }
 
-      // Получаем данные из текущих компонентов
-      const thermistorSlot = slots[1];
-      let metalParams, semiParams;
+  // Фильтруем данные из таблицы сохранённых показаний
+  // Только записи с напряжением от 5 до 15 В
+  const filteredSnapshots = snapshots.value.filter(s => {
+    return s.V >= 5 && s.V <= 15;
+  });
 
-      if (thermistorSlot?.component) {
-        if (thermistorSlot.component.data.kind === 'metal') {
-          metalParams = thermistorSlot.component.data;
-          semiParams = {
-            R0: 1000,
-            B: 3500,
-            kind: 'semiconductor'
-          };
-        } else {
-          semiParams = thermistorSlot.component.data;
-          metalParams = {
-            R0: 100,
-            alpha: 0.0039,
-            kind: 'metal'
-          };
-        }
-      } else {
-        metalParams = { R0: 100, alpha: 0.0039, kind: 'metal' };
-        semiParams = { R0: 1000, B: 3500, kind: 'semiconductor' };
-      }
+  // Разделяем данные по типу терморезистора
+  const metalData = filteredSnapshots
+      .filter(s => s.thermistorType === 'metal')
+      .map(s => ({
+        x: parseFloat(s.T), // температура
+        y: parseFloat(s.R || 0) // сопротивление
+      }));
 
-      // Генерация данных для графика
-      const minTemp = 290;
-      const maxTemp = 390;
-      const step = 5;
-      const temperatures: number[] = [];
-      const resistancesMetal: number[] = [];
-      const resistancesSemi: number[] = [];
-
-      for (let T = minTemp; T <= maxTemp; T += step) {
-        temperatures.push(T);
-        resistancesMetal.push(calculateMetalResistance(T, metalParams.R0, metalParams.alpha));
-        resistancesSemi.push(calculateSemiconductorResistance(T, semiParams.R0, semiParams.B));
-      }
+  const semiData = filteredSnapshots
+      .filter(s => s.thermistorType === 'semiconductor')
+      .map(s => ({
+        x: parseFloat(s.T), // температура
+        y: parseFloat(s.R || 0) // сопротивление
+      }));
 
       rtChart = new Chart(ctx, {
-        type: 'line',
+        type: 'scatter',
         data: {
-          labels: temperatures.map(t => t.toString()),
           datasets: [
             {
               label: 'Металлический терморезистор',
-              data: resistancesMetal,
+              data: metalData,
               borderColor: 'rgba(54, 162, 235, 1)',
               backgroundColor: 'rgba(54, 162, 235, 0.1)',
               borderWidth: 2,
-              tension: 0.4,
-              fill: false
+              pointRadius: 5,
+              pointHoverRadius: 7,
+              showLine: true,
+              fill: false,
             },
             {
               label: 'Полупроводниковый терморезистор',
-              data: resistancesSemi,
+              data: semiData,
               borderColor: 'rgba(255, 99, 132, 1)',
               backgroundColor: 'rgba(255, 99, 132, 0.1)',
               borderWidth: 2,
-              tension: 0.4,
-              fill: false
+              pointRadius: 5,
+              pointHoverRadius: 7,
+              showLine: true,
+              fill: false,
             }
           ]
         },
@@ -1299,7 +1255,7 @@ export default defineComponent({
                   if (label) {
                     label += ': ';
                   }
-                  label += `R = ${context.parsed.y?.toFixed(2)} Ω, T = ${temperatures[context.dataIndex]} K`;
+                  label += `R = ${context.parsed.y?.toFixed(2)} Ω, T = ${context.parsed.x} K`;
                   return label;
                 }
               }
@@ -1317,7 +1273,9 @@ export default defineComponent({
               },
               grid: {
                 color: 'rgba(0, 0, 0, 0.1)'
-              }
+              },
+              min: 280,
+              max: 400,
             },
             y: {
               title: {
@@ -1328,7 +1286,7 @@ export default defineComponent({
                   weight: 'bold'
                 }
               },
-              type: 'logarithmic',
+              type: 'linear',
               grid: {
                 color: 'rgba(0, 0, 0, 0.1)'
               }
@@ -1676,7 +1634,7 @@ export default defineComponent({
 
       if (ammeterSlot && ammeterSlot.occupied) {
         const I = calculateCurrent();
-        snapshot.I = I !== null ? I.toFixed(2) : '—';
+        snapshot.I = I !== null ? I.toFixed(4) : '—';
       }
 
       snapshots.value.unshift(snapshot);
