@@ -611,6 +611,37 @@ export default defineComponent({
       }
     }
 
+    // Функция загрузки
+    const modelCache = new Map<string, THREE.Object3D>();
+    async function loadModelWithCache(path: string): Promise<THREE.Object3D | null> {
+      // Проверяем кэш
+      if (modelCache.has(path)) {
+        const cached = modelCache.get(path);
+        return cached ? cached.clone() : null; // Клонируем, если нужно несколько экземпляров
+      }
+
+      try {
+        const gltf = await new Promise<any>((resolve, reject) => {
+          loader!.load(path, resolve, undefined, reject);
+        });
+
+        const model = gltf.scene;
+        // Настраиваем тени и другие общие свойства
+        model.traverse((child: THREE.Mesh) => {
+          child.castShadow = showShadows.value;
+          child.receiveShadow = showShadows.value;
+        });
+
+        // Сохраняем в кэше
+        modelCache.set(path, model);
+
+        return model.clone(); // Клонируем для использования
+      } catch (error) {
+        console.warn(`Не удалось загрузить модель ${path}:`, error);
+        return null;
+      }
+    }
+
     // Функция для добавления декоративных элементов
     async function addDecorativeElements() {
       if (!scene || !loader) return;
@@ -620,16 +651,12 @@ export default defineComponent({
 
       for (const config of decorativeConfigs) {
         try {
-          const gltf = await new Promise<any>((resolve, reject) => {
-            loader!.load(
-                config.path,
-                (gltf) => resolve(gltf),
-                undefined,
-                (error) => reject(error)
-            );
-          });
+          const gltf = await loadModelWithCache(config.path);
+          if (!gltf) {
+            break;
+          }
 
-          const model = gltf.scene;
+          const model = gltf;
 
           // Настройка модели
           model.position.copy(config.position);
@@ -637,8 +664,8 @@ export default defineComponent({
           model.scale.set(config.scale, config.scale, config.scale);
 
           // Настройка теней
-          model.traverse((child: THREE.Mesh) => {
-            if (child.isMesh) {
+          model.traverse((child: THREE.Object3D) => {
+            if ((child as THREE.Mesh).isMesh) {
               child.castShadow = config.shadowEnabled && showShadows.value;
               child.receiveShadow = config.shadowEnabled && showShadows.value;
             }
