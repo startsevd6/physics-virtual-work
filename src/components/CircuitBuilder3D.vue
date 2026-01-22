@@ -63,7 +63,7 @@
                 ></div>
               </div>
               <div class="progress-text">
-                {{ loadedModelsCount }} / {{ totalModelsCount }}
+                {{ loadedModelsCount / totalModelsCount * 100 }} %
               </div>
             </div>
           </div>
@@ -1420,6 +1420,9 @@ export default defineComponent({
     async function initComponents() {
       if (!scene) return;
 
+      // Увеличиваем общее количество моделей для основных компонентов
+      totalModelsCount.value += 3;
+
       // Добавляем все компоненты сразу
       await addComponentToSlot('source', { kind: 'source' }, 0);
       await addComponentToSlot('thermistor', { kind: selectedThermistorKind.value }, 1);
@@ -1596,6 +1599,9 @@ export default defineComponent({
       // Обновление состояния слота
       slot.occupied = true;
       slot.component = component;
+
+      // Увеличиваем счетчик загруженных моделей для этого компонента
+      incrementLoadedModels();
 
       // Обновляем ток после добавления компонента
       updateCurrent();
