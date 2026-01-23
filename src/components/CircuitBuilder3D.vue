@@ -79,122 +79,118 @@
 
       <div class="measurements-section">
         <div>
-          <h4>Текущие компоненты в схеме</h4>
+          <h4>Компоненты схемы</h4>
           <div class="current-components">
-            <div v-for="(slot, idx) in slots" :key="idx" class="slot-info">
-              <div v-if="!slot.component" class="slot-label">{{ slot.label }}</div>
-              <div v-if="slot.component" class="slot-content">
-                <!-- Источник напряжения -->
-                <div v-if="slot.component.data.type === 'source'">
-                  <strong>Источник напряжения</strong>
-                  <div class="component-params">
+            <!-- Источник напряжения -->
+            <div class="slot-info">
+              <strong>Источник напряжения</strong>
+              <div class="component-params">
+                <div class="param-row">
+                  <label>Напряжение:</label>
+                  <div class="param-controls">
+                    <input
+                        type="range"
+                        min="0"
+                        max="15"
+                        step="0.1"
+                        v-model.number="sourceComponent.data.voltage"
+                        class="slider"
+                    />
+                    <input
+                        type="number"
+                        min="0"
+                        max="15"
+                        step="0.1"
+                        v-model.number="sourceComponent.data.voltage"
+                        class="input"
+                    />
+                    <span class="param-unit">В</span>
+                  </div>
+                </div>
+                <div class="voltage-value">
+                  Текущее значение: {{ sourceComponent.data.voltage || 0 }} В
+                </div>
+              </div>
+            </div>
+
+            <!-- Терморезистор -->
+            <div class="slot-info">
+              <strong>{{ thermistorComponent.data.kind === 'metal' ? 'Металлический' : 'Полупроводниковый' }} терморезистор</strong>
+              <div class="component-params">
+                <div class="params-column">
+                  <div class="param-row">
+                    <label>R0 (Ω):</label>
+                    <div class="param-controls">
+                      <input
+                          type="number"
+                          min="1"
+                          max="10000"
+                          step="1"
+                          v-model.number="thermistorComponent.data.R0"
+                          class="input"
+                      />
+                      <span class="param-unit">Ω</span>
+                    </div>
+                  </div>
+
+                  <div v-if="thermistorComponent.data.kind === 'metal'">
                     <div class="param-row">
-                      <label>Напряжение:</label>
+                      <label>α (1/K):</label>
                       <div class="param-controls">
                         <input
-                            type="range"
-                            min="0"
-                            max="15"
-                            step="0.1"
-                            v-model.number="slot.component.data.voltage"
-                            class="slider"
-                        />
-                        <input
                             type="number"
-                            min="0"
-                            max="15"
-                            step="0.1"
-                            v-model.number="slot.component.data.voltage"
+                            min="0.001"
+                            max="0.01"
+                            step="0.0001"
+                            v-model.number="thermistorComponent.data.alpha"
                             class="input"
                         />
-                        <span class="param-unit">В</span>
                       </div>
-                    </div>
-                    <div class="voltage-value">
-                      Текущее значение: {{ slot.component.data.voltage || 0 }} В
                     </div>
                   </div>
-                </div>
-
-                <!-- Терморезистор -->
-                <div v-else-if="slot.component.data.type === 'thermistor'">
-                  <strong>{{ slot.component.data.kind === 'metal' ? 'Металлический' : 'Полупроводниковый' }} терморезистор</strong>
-                  <div class="component-params">
-                    <div class="params-column">
-                      <div class="param-row">
-                        <label>R0 (Ω):</label>
-                        <div class="param-controls">
-                          <input
-                              type="number"
-                              min="1"
-                              max="10000"
-                              step="1"
-                              v-model.number="slot.component.data.R0"
-                              class="input"
-                          />
-                          <span class="param-unit">Ω</span>
-                        </div>
-                      </div>
-
-                      <div v-if="slot.component.data.kind === 'metal'">
-                        <div class="param-row">
-                          <label>α (1/K):</label>
-                          <div class="param-controls">
-                            <input
-                                type="number"
-                                min="0.001"
-                                max="0.01"
-                                step="0.0001"
-                                v-model.number="slot.component.data.alpha"
-                                class="input"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      <div v-else>
-                        <div class="param-row">
-                          <label>B (K):</label>
-                          <div class="param-controls">
-                            <input
-                                type="number"
-                                min="1000"
-                                max="5000"
-                                step="1"
-                                v-model.number="slot.component.data.B"
-                                class="input"
-                            />
-                            <span class="param-unit">K</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div class="param-info">
-                      <div>Температура: {{ globalTemp }} K</div>
-                      <div>
-                        Текущее сопротивление:
-                        {{ calculateCurrentResistance(slot.component.data).toFixed(2) }} Ω
+                  <div v-else>
+                    <div class="param-row">
+                      <label>B (K):</label>
+                      <div class="param-controls">
+                        <input
+                            type="number"
+                            min="1000"
+                            max="5000"
+                            step="1"
+                            v-model.number="thermistorComponent.data.B"
+                            class="input"
+                        />
+                        <span class="param-unit">K</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <!-- Амперметр -->
-                <div v-else-if="slot.component.data.type === 'amm'">
-                  <strong>Амперметр</strong>
-                  <div class="component-params">
-                    <div class="param-info">
-                      <div v-if="currentI !== null">
-                        Текущий ток: {{ currentI.toFixed(4) }} А
-                      </div>
-                      <div v-else>
-                        Нет данных для расчёта тока
-                      </div>
-                    </div>
+                <div class="param-info">
+                  <div>Температура: {{ globalTemp }} K</div>
+                  <div>
+                    Текущее сопротивление:
+                    {{ calculateCurrentResistance(thermistorComponent.data).toFixed(2) }} Ω
                   </div>
                 </div>
               </div>
             </div>
+
+            <!-- Амперметр -->
+            <div class="slot-info">
+              <strong>Амперметр</strong>
+              <div class="component-params">
+                <div class="param-info">
+                  <div v-if="currentI !== null">
+                    Текущий ток: {{ currentI.toFixed(4) }} А
+                  </div>
+                  <div v-else>
+                    Нет данных для расчёта тока
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div style="margin-top:8px;display:flex;gap:8px;align-items:stretch">
               <button @click="saveSnapshot">Сохранить показания</button>
               <button @click="resetValues">Сброс</button>
@@ -301,27 +297,6 @@ type Component3D = {
   position: THREE.Vector3;
   rotation: THREE.Euler;
   scale: number;
-  slotIndex: number;
-};
-
-type Slot3D = {
-  label: string;
-  position: THREE.Vector3;
-  rotation: THREE.Euler;
-  scale: number;
-  occupied: boolean;
-  component: Component3D | null;
-  allowedTypes: string[];
-};
-
-// Тип для декоративных элементов
-type DecorativeElement = {
-  name: string;
-  path: string;
-  position: THREE.Vector3;
-  rotation: THREE.Euler;
-  scale: number;
-  shadowEnabled: boolean;
 };
 
 export default defineComponent({
@@ -362,42 +337,51 @@ export default defineComponent({
     const totalModelsCount = ref(0);
     const loadingProgress = ref(0);
 
-    // Слоты для компонентов (3D позиции)
-    const slots = reactive<Slot3D[]>([
-      {
-        label: 'Источник напряжения',
-        position: new THREE.Vector3(-0.75, 0, 0),
-        rotation: new THREE.Euler(0, -Math.PI / 2, 0),
-        scale: 1.5,
-        occupied: false,
-        component: null,
-        allowedTypes: ['source']
+    // Компоненты схемы (фиксированные)
+    const sourceComponent = reactive<Component3D>({
+      type: 'source',
+      model: null,
+      data: {
+        type: 'source',
+        kind: 'source',
+        voltage: 0
       },
-      {
-        label: 'Терморезистор',
-        position: new THREE.Vector3(0.75, 0, 0),
-        rotation: new THREE.Euler(0, -Math.PI / 2, 0),
-        scale: 1.2,
-        occupied: false,
-        component: null,
-        allowedTypes: ['thermistor']
+      position: new THREE.Vector3(-0.75, 0, 0),
+      rotation: new THREE.Euler(0, -Math.PI / 2, 0),
+      scale: 1.5
+    });
+
+    const thermistorComponent = reactive<Component3D>({
+      type: 'thermistor',
+      model: null,
+      data: {
+        type: 'thermistor',
+        kind: 'metal',
+        R0: 100,
+        alpha: 0.0039
       },
-      {
-        label: 'Амперметр',
-        position: new THREE.Vector3(-0.75, 0.325, 0),
-        rotation: new THREE.Euler(0, -Math.PI / 2, 0),
-        scale: 1,
-        occupied: false,
-        component: null,
-        allowedTypes: ['amm']
-      }
-    ]);
+      position: new THREE.Vector3(0.75, 0, 0),
+      rotation: new THREE.Euler(0, -Math.PI / 2, 0),
+      scale: 1.2
+    });
+
+    const ammeterComponent = reactive<Component3D>({
+      type: 'amm',
+      model: null,
+      data: {
+        type: 'amm',
+        kind: 'amm'
+      },
+      position: new THREE.Vector3(-0.75, 0.325, 0),
+      rotation: new THREE.Euler(0, -Math.PI / 2, 0),
+      scale: 1
+    });
 
     const snapshots = ref<any[]>([]);
     const decorativeElements = ref<THREE.Object3D[]>([]); // Храним ссылки на декоративные элементы
 
     // Конфигурация декоративных элементов
-    const decorativeConfigs: DecorativeElement[] = [
+    const decorativeConfigs = [
       // Красная кнопка для вольтамперметра
       {
         name: 'red_button_for_ammeter',
@@ -707,10 +691,7 @@ export default defineComponent({
     function updateVoltageSpinnerRotation() {
       if (!voltageSpinner.value) return;
 
-      const sourceSlot = slots[0];
-      if (!sourceSlot?.component) return;
-
-      const voltage = sourceSlot.component.data.voltage || 0;
+      const voltage = sourceComponent.data.voltage || 0;
       // Масштабируем напряжение в угол вращения (0-15В = 0-360 градусов)
       const rotationAngle = (voltage / 15) * Math.PI / 2.5;
 
@@ -733,7 +714,7 @@ export default defineComponent({
     }
 
     // Следим за изменением напряжения
-    watch(() => slots[0]?.component?.data?.voltage, () => {
+    watch(() => sourceComponent.data.voltage, () => {
       updateVoltageSpinnerRotation();
     });
 
@@ -853,7 +834,7 @@ export default defineComponent({
       }
     }
 
-    // Добавляем новые конфигурации для дисплеев (текстовых плоскостей)
+    // Конфигурации для дисплеев
     const displayConfigs = [
       // Дисплей температуры на терморезисторе
       {
@@ -1027,8 +1008,7 @@ export default defineComponent({
       );
 
       // Обновляем дисплей напряжения на вольтамперметре
-      const sourceSlot = slots[0];
-      const voltage = sourceSlot?.component?.data?.voltage || 0;
+      const voltage = sourceComponent.data.voltage || 0;
       updateDisplayText(
           voltmeterDisplay.value,
           `${voltage.toFixed(2)}`,
@@ -1046,15 +1026,8 @@ export default defineComponent({
 
     // Вычисление текущего тока в цепи
     function calculateCurrent(): number | null {
-      const sourceSlot = slots[0];
-      const sampleSlot = slots[1];
-
-      if (!sourceSlot?.component || !sampleSlot?.component) {
-        return null;
-      }
-
-      const V = sourceSlot.component.data.voltage || 0;
-      const R = calculateCurrentResistance(sampleSlot.component.data);
+      const V = sourceComponent.data.voltage || 0;
+      const R = calculateCurrentResistance(thermistorComponent.data);
 
       if (R <= 0) return 0;
 
@@ -1090,26 +1063,26 @@ export default defineComponent({
         uiChart.destroy();
       }
 
-  // Фильтруем данные из таблицы сохранённых показаний
-  // Только записи с T=300 и напряжением от 2 до 4 В
-  const filteredSnapshots = snapshots.value.filter(s => {
-    return s.T === 300 && s.V >= 2 && s.V <= 4;
-  });
+      // Фильтруем данные из таблицы сохранённых показаний
+      // Только записи с T=300 и напряжением от 2 до 4 В
+      const filteredSnapshots = snapshots.value.filter(s => {
+        return s.T === 300 && s.V >= 2 && s.V <= 4;
+      });
 
-  // Разделяем данные по типу терморезистора
-  const metalData = filteredSnapshots
-      .filter(s => s.thermistorType === 'metal')
-      .map(s => ({
-        x: parseFloat(s.I || 0), // ток
-        y: parseFloat(s.V) // напряжение
-      }));
+      // Разделяем данные по типу терморезистора
+      const metalData = filteredSnapshots
+          .filter(s => s.thermistorType === 'metal')
+          .map(s => ({
+            x: parseFloat(s.I || 0), // ток
+            y: parseFloat(s.V) // напряжение
+          }));
 
-  const semiData = filteredSnapshots
-      .filter(s => s.thermistorType === 'semiconductor')
-      .map(s => ({
-        x: parseFloat(s.I || 0), // ток
-        y: parseFloat(s.V) // напряжение
-      }));
+      const semiData = filteredSnapshots
+          .filter(s => s.thermistorType === 'semiconductor')
+          .map(s => ({
+            x: parseFloat(s.I || 0), // ток
+            y: parseFloat(s.V) // напряжение
+          }));
 
       uiChart = new Chart(ctx, {
         type: 'scatter',
@@ -1212,26 +1185,26 @@ export default defineComponent({
         rtChart.destroy();
       }
 
-  // Фильтруем данные из таблицы сохранённых показаний
-  // Только записи с напряжением от 5 до 15 В
-  const filteredSnapshots = snapshots.value.filter(s => {
-    return s.V >= 5 && s.V <= 15;
-  });
+      // Фильтруем данные из таблицы сохранённых показаний
+      // Только записи с напряжением от 5 до 15 В
+      const filteredSnapshots = snapshots.value.filter(s => {
+        return s.V >= 5 && s.V <= 15;
+      });
 
-  // Разделяем данные по типу терморезистора
-  const metalData = filteredSnapshots
-      .filter(s => s.thermistorType === 'metal')
-      .map(s => ({
-        x: parseFloat(s.T), // температура
-        y: parseFloat(s.R || 0) // сопротивление
-      }));
+      // Разделяем данные по типу терморезистора
+      const metalData = filteredSnapshots
+          .filter(s => s.thermistorType === 'metal')
+          .map(s => ({
+            x: parseFloat(s.T), // температура
+            y: parseFloat(s.R || 0) // сопротивление
+          }));
 
-  const semiData = filteredSnapshots
-      .filter(s => s.thermistorType === 'semiconductor')
-      .map(s => ({
-        x: parseFloat(s.T), // температура
-        y: parseFloat(s.R || 0) // сопротивление
-      }));
+      const semiData = filteredSnapshots
+          .filter(s => s.thermistorType === 'semiconductor')
+          .map(s => ({
+            x: parseFloat(s.T), // температура
+            y: parseFloat(s.R || 0) // сопротивление
+          }));
 
       rtChart = new Chart(ctx, {
         type: 'scatter',
@@ -1424,9 +1397,9 @@ export default defineComponent({
       totalModelsCount.value += 3;
 
       // Добавляем все компоненты сразу
-      await addComponentToSlot('source', { kind: 'source' }, 0);
-      await addComponentToSlot('thermistor', { kind: selectedThermistorKind.value }, 1);
-      await addComponentToSlot('amm', { kind: 'amm' }, 2);
+      await addComponentToScene(sourceComponent);
+      await addComponentToScene(thermistorComponent);
+      await addComponentToScene(ammeterComponent);
     }
 
     // Анимационный цикл
@@ -1551,16 +1524,15 @@ export default defineComponent({
       return mesh;
     }
 
-    // Добавление компонента в слот
-    async function addComponentToSlot(type: string, meta: any, slotIndex: number) {
-      const slot = slots[slotIndex];
-      if (!slot || !scene) return false;
+    // Добавление компонента на сцену
+    async function addComponentToScene(component: Component3D) {
+      if (!scene) return false;
 
       // Загружаем 3D модель или создаем запасной вариант
-      let model = await loadModelForType(type, meta.kind);
+      let model = await loadModelForType(component.type, component.data.kind);
 
       if (!model) {
-        model = createFallbackGeometry(type, meta.kind);
+        model = createFallbackGeometry(component.type, component.data.kind);
       }
 
       // Настройка модели
@@ -1569,36 +1541,16 @@ export default defineComponent({
         child.receiveShadow = showShadows.value;
       });
 
-      model.scale.set(slot.scale, slot.scale, slot.scale);
-      model.position.copy(slot.position);
-      model.rotation.copy(slot.rotation);
+      model.scale.set(component.scale, component.scale, component.scale);
+      model.position.copy(component.position);
+      model.rotation.copy(component.rotation);
 
       const initialScale = 0.1;
       model.scale.set(initialScale, initialScale, initialScale);
       scene.add(model);
 
-      // Создание объекта компонента с начальными параметрами
-      const component: Component3D = {
-        type,
-        model,
-        data: {
-          type,
-          kind: meta.kind,
-          voltage: type === 'source' ? 0 : undefined,
-          R0: type === 'thermistor' ?
-              (meta.kind === 'metal' ? 100 : 1000) : undefined,
-          alpha: type === 'thermistor' && meta.kind === 'metal' ? 0.0039 : undefined,
-          B: type === 'thermistor' && meta.kind === 'semiconductor' ? 3500 : undefined
-        },
-        position: slot.position.clone(),
-        rotation: slot.rotation.clone(),
-        scale: slot.scale,
-        slotIndex
-      };
-
-      // Обновление состояния слота
-      slot.occupied = true;
-      slot.component = component;
+      // Обновляем модель компонента
+      component.model = model;
 
       // Увеличиваем счетчик загруженных моделей для этого компонента
       incrementLoadedModels();
@@ -1614,49 +1566,32 @@ export default defineComponent({
 
     // Обновление типа терморезистора при изменении радиокнопки
     function updateThermistorKind() {
-      const thermistorSlot = slots[1];
-      if (thermistorSlot?.component && thermistorSlot.component.data.type === 'thermistor') {
-        // Обновляем данные компонента
-        thermistorSlot.component.data.kind = selectedThermistorKind.value;
+      // Обновляем данные компонента
+      thermistorComponent.data.kind = selectedThermistorKind.value;
 
-        // Обновляем параметры по умолчанию в зависимости от типа
-        if (selectedThermistorKind.value === 'metal') {
-          thermistorSlot.component.data.R0 = 100;
-          thermistorSlot.component.data.alpha = 0.0039;
-          thermistorSlot.component.data.B = undefined;
-        } else {
-          thermistorSlot.component.data.R0 = 1000;
-          thermistorSlot.component.data.alpha = undefined;
-          thermistorSlot.component.data.B = 3500;
-        }
-
-        updateCurrent();
-        updateCharts();
+      // Обновляем параметры по умолчанию в зависимости от типа
+      if (selectedThermistorKind.value === 'metal') {
+        thermistorComponent.data.R0 = 100;
+        thermistorComponent.data.alpha = 0.0039;
+        thermistorComponent.data.B = undefined;
+      } else {
+        thermistorComponent.data.R0 = 1000;
+        thermistorComponent.data.alpha = undefined;
+        thermistorComponent.data.B = 3500;
       }
+
+      updateCurrent();
+      updateCharts();
     }
 
     // Сохранение измерений
     function saveSnapshot() {
-      const sourceSlot = slots[0];
-      const sampleSlot = slots[1];
-      const ammeterSlot = slots[2];
-
-      if (!sourceSlot || !sampleSlot) {
-        showErrorPopup("Схема собрана не полностью!");
-        return;
-      }
-
-      if (!sourceSlot.occupied || !sampleSlot.occupied) {
-        showErrorPopup("Схема собрана не полностью!");
-        return;
-      }
-
-      const V = sourceSlot.component?.data?.voltage || 0;
+      const V = sourceComponent.data.voltage || 0;
       const T = globalTemp.value;
-      let Rsample = calculateCurrentResistance(sampleSlot.component?.data);
+      let Rsample = calculateCurrentResistance(thermistorComponent.data);
 
       // Получаем тип терморезистора из данных компонента
-      const thermistorType = sampleSlot.component?.data?.kind || selectedThermistorKind.value;
+      const thermistorType = thermistorComponent.data.kind;
 
       const snapshot: any = {
         V: V.toFixed(2),
@@ -1665,10 +1600,8 @@ export default defineComponent({
         thermistorType // Добавляем тип терморезистора
       };
 
-      if (ammeterSlot && ammeterSlot.occupied) {
-        const I = calculateCurrent();
-        snapshot.I = I !== null ? I.toFixed(4) : '—';
-      }
+      const I = calculateCurrent();
+      snapshot.I = I !== null ? I.toFixed(4) : '—';
 
       snapshots.value.unshift(snapshot);
     }
@@ -1688,10 +1621,7 @@ export default defineComponent({
     // Сброс значений к значениям по умолчанию
     function resetValues() {
       // Сбрасываем напряжение источника
-      const sourceSlot = slots[0];
-      if (sourceSlot?.component) {
-        sourceSlot.component.data.voltage = 0;
-      }
+      sourceComponent.data.voltage = 0;
 
       // Сбрасываем температуру
       globalTemp.value = 300;
@@ -1734,20 +1664,20 @@ export default defineComponent({
       updateCharts();
     }
 
-    function showErrorPopup(message: string) {
+    /*function showErrorPopup(message: string) {
       errorMessage.value = message;
       showError.value = true;
-    }
+    }*/
 
     // Следим за изменением типа терморезистора
     watch(selectedThermistorKind, updateThermistorKind);
 
     // Следим за изменением параметров для обновления графиков
-    watch(() => slots[1]?.component?.data, () => {
+    watch(() => thermistorComponent.data, () => {
       updateCharts();
     }, { deep: true });
 
-    watch(() => slots[0]?.component?.data?.voltage, () => {
+    watch(() => sourceComponent.data.voltage, () => {
       updateCharts();
     });
 
@@ -1799,13 +1729,14 @@ export default defineComponent({
       globalTemp,
       showError,
       errorMessage,
-      slots,
       snapshots,
       currentI,
       selectedThermistorKind,
       showShadows,
       voltageSpinner,
       thermistorSpinner,
+      sourceComponent,
+      thermistorComponent,
 
       // Состояние загрузки
       isLoading,
@@ -2055,12 +1986,6 @@ strong, div {
   border: 2px solid #e5e7eb;
   border-radius: 8px;
   background: #f9fafb;
-}
-
-.slot-label {
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: #374151;
 }
 
 .component-params {
