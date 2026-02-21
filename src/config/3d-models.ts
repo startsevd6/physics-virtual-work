@@ -194,6 +194,23 @@ export const decorativeConfigs: DecorativeElement[] = [
     rotation: new THREE.Euler(0, -Math.PI/2, 0),
     scale: 0.1,
     shadowEnabled: true
+  },
+  // Порты для терморезистора (ИСПРАВЛЕННЫЕ КООРДИНАТЫ)
+  {
+    name: 'port_thermistor_1',
+    path: './models/port.glb',
+    position: new THREE.Vector3(0.95, 0.08, -0.15), // Справа, выше центра, ближе к камере
+    rotation: new THREE.Euler(0, -Math.PI/2, 0),
+    scale: 0.1, // Временно увеличен для видимости
+    shadowEnabled: true
+  },
+  {
+    name: 'port_thermistor_2',
+    path: './models/port.glb',
+    position: new THREE.Vector3(0.85, 0.08, -0.15), // Левее первого порта
+    rotation: new THREE.Euler(0, -Math.PI/2, 0),
+    scale: 0.1, // Временно увеличен для видимости
+    shadowEnabled: true
   }
 ];
 
