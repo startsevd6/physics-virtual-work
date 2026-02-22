@@ -191,7 +191,7 @@ export const decorativeConfigs: DecorativeElement[] = [
     name: 'spinner_for_thermistor',
     path: './models/spinner_for_thermistor.glb',
     position: new THREE.Vector3(1.07, 0.05, 0),
-    rotation: new THREE.Euler(0, -Math.PI/2, 0),
+    rotation: new THREE.Euler(6.75*Math.PI/100, 0, 0),
     scale: 0.1,
     shadowEnabled: true
   }

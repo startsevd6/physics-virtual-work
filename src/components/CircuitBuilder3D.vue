@@ -568,7 +568,7 @@ export default defineComponent({
       const rotationAngle = -normalizedTemp * Math.PI * 1.75;
 
       // Вращаем вокруг оси Y
-      thermistorSpinner.value.rotation.y = -Math.PI/2 + rotationAngle;
+      thermistorSpinner.value.rotation.y = 4*Math.PI/10 + rotationAngle;
     }
 
     // Следим за изменением напряжения
