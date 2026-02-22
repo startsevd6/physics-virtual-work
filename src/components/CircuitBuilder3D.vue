@@ -284,7 +284,7 @@ import { defineComponent, onMounted, onUnmounted, ref, reactive, watch, nextTick
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { CatmullRomCurve3, TubeGeometry } from 'three';
+import { MeshStandardMaterial, CatmullRomCurve3, TubeGeometry } from 'three';
 import { Chart, registerables } from 'chart.js';
 import ErrorPopup from './ErrorPopup.vue';
 
@@ -1634,7 +1634,7 @@ export default defineComponent({
           if (mesh.material) {
             const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
             materials.forEach(mat => {
-              if (mat.emissive) {
+              if (mat instanceof MeshStandardMaterial) {
                 mat.emissive.setHex(colorHex);
               }
             });
