@@ -1,16 +1,12 @@
 <template>
-  <div class="app">
     <div class="header" :class="{ 'header--loaded': isLoaded }">
       <h1>Виртуальная лаборатория: исследование свойств терморезистора</h1>
       <div class="subtitle">3D интерактивная среда</div>
     </div>
 
-    <div class="controls">
-      <div class="circuit-3d-wrapper">
-        <CircuitBuilder3D/>
-      </div>
-    </div>
+    <CircuitBuilder3D/>
 
+    <!--
     <div class="instructions">
       <h3>Инструкция</h3>
       <ol>
@@ -21,7 +17,7 @@
         <li>Сохраняйте показания приборов — таблица обновляется автоматически</li>
       </ol>
     </div>
-  </div>
+    -->
 </template>
 
 <script lang="ts">
@@ -73,17 +69,31 @@ body {
   min-height: 100vh;
 }
 
-.app {
+#app {
+  text-align: center;  
+  overflow: hidden;
+
   margin: 0 auto;
-  padding: 20px;
+  padding: 0px;
 }
 
 .header {
+  display: flex;
+  flex-direction: row;
+  position: fixed;
+  top: 0px;
+  z-index: 1;
+  justify-content: space-between;
+  align-items: center;
+  width: stretch;
+  height: 100px;
   text-align: center;
+  /*
+  margin: 32px;
   margin-bottom: 30px;
-  padding: 20px;
+  */
+  padding: 30px 40px;
   background: white;
-  border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.1);
 
   transform: translateY(40px);
@@ -128,11 +138,15 @@ body {
 }
 
 .controls {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  /*background: white;*/
+  /*border-radius: 12px;*/
+  padding: 30px;
+  /*box-shadow: 0 4px 20px rgba(0,0,0,0.1);*/
   margin-bottom: 24px;
+
+  scroll-snap-align: start;
+  min-block-size: calc(100vh - 100px);
+  scroll-snap-stop: always;
 
   opacity: 0;
   transform: translateY(20px);
@@ -149,6 +163,10 @@ body {
   border-radius: 12px;
   padding: 24px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+
+  scroll-snap-align: start;
+  min-block-size: calc(100vh - 100px);
+  scroll-snap-stop: always;
 
   opacity: 0;
   transform: translateY(20px);
