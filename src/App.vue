@@ -1,35 +1,58 @@
 <template>
-  <div class="app">
-    <div class="header">
+    <div class="header" :class="{ 'header--loaded': isLoaded }">
       <h1>Виртуальная лаборатория: исследование свойств терморезистора</h1>
       <div class="subtitle">3D интерактивная среда</div>
     </div>
 
-    <div class="controls">
-      <div class="circuit-3d-wrapper">
-        <CircuitBuilder3D/>
-      </div>
-    </div>
+    <CircuitBuilder3D/>
 
+    <!--
     <div class="instructions">
       <h3>Инструкция</h3>
       <ol>
-        <li>Перетащите компоненты из левой панели на 3D рабочую область.</li>
-        <li>Используйте элементы управления камерой для изменения ракурса.</li>
-        <li>Установите регуляторы температуры и напряжения в минимальные положения и начните измерения.</li>
-        <li>Сохраняйте показания приборов — таблица обновляется автоматически.</li>
+        <li>Для изменения угла наклона камеры используйте левую кнопку мыши,
+          перемещения камеры - правую кнопку мыши,
+          изменения фокусного расстояния - колёсико</li>
+        <li>Установите регуляторы температуры и напряжения в необходимые положения и начните измерения</li>
+        <li>Сохраняйте показания приборов — таблица обновляется автоматически</li>
       </ol>
     </div>
-  </div>
+    -->
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
+import { defineComponent, ref, onMounted, onUnmounted } from 'vue'
 import CircuitBuilder3D from './components/CircuitBuilder3D.vue'
 
 export default defineComponent({
   name: 'App',
-  components: { CircuitBuilder3D }
+  components: { CircuitBuilder3D },
+  setup() {
+    const isLoaded = ref(false)
+
+    const handleLoad = () => {
+      // Задержка для лучшего визуального эффекта
+      setTimeout(() => {
+        isLoaded.value = true
+      }, 100)
+    }
+
+    onMounted(() => {
+      if (document.readyState === 'complete') {
+        handleLoad()
+      } else {
+        window.addEventListener('load', handleLoad)
+      }
+    })
+
+    onUnmounted(() => {
+      window.removeEventListener('load', handleLoad)
+    })
+
+    return {
+      isLoaded
+    }
+  }
 })
 </script>
 
@@ -46,39 +69,93 @@ body {
   min-height: 100vh;
 }
 
-.app {
-  max-width: 1400px;
+#app {
+  text-align: center;  
+  overflow: hidden;
+
   margin: 0 auto;
-  padding: 20px;
+  padding: 0px;
 }
 
 .header {
+  display: flex;
+  flex-direction: row;
+  position: fixed;
+  top: 0px;
+  z-index: 1;
+  justify-content: space-between;
+  align-items: center;
+  width: stretch;
+  height: 100px;
   text-align: center;
+  /*
+  margin: 32px;
   margin-bottom: 30px;
-  padding: 20px;
+  */
+  padding: 30px 40px;
   background: white;
-  border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+
+  transform: translateY(40px);
+  opacity: 0;
+  transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.8s ease-out;
+  transition-delay: 0.1s;
+}
+
+.header--loaded {
+  transform: translateY(0);
+  opacity: 1;
 }
 
 .header h1 {
   color: #1f2937;
   margin-bottom: 8px;
   font-size: 28px;
+
+  transform: translateY(10px);
+  opacity: 0;
+  transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s, opacity 0.8s ease-out 0.2s;
+}
+
+.header--loaded.header h1 {
+  transform: translateY(0);
+  opacity: 1;
 }
 
 .subtitle {
   color: #6b7280;
   font-size: 16px;
   font-weight: 500;
+
+  transform: translateY(10px);
+  opacity: 0;
+  transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s, opacity 0.8s ease-out 0.3s;
+}
+
+.header--loaded .subtitle {
+  transform: translateY(0);
+  opacity: 1;
 }
 
 .controls {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  /*background: white;*/
+  /*border-radius: 12px;*/
+  padding: 30px;
+  /*box-shadow: 0 4px 20px rgba(0,0,0,0.1);*/
   margin-bottom: 24px;
+
+  scroll-snap-align: start;
+  min-block-size: calc(100vh - 100px);
+  scroll-snap-stop: always;
+
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease-out 0.4s, transform 0.6s ease-out 0.4s;
+}
+
+.header--loaded ~ .controls {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .instructions {
@@ -86,6 +163,19 @@ body {
   border-radius: 12px;
   padding: 24px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+
+  scroll-snap-align: start;
+  min-block-size: calc(100vh - 100px);
+  scroll-snap-stop: always;
+
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease-out 0.5s, transform 0.6s ease-out 0.5s;
+}
+
+.header--loaded ~ .instructions {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .instructions h3 {

@@ -1,7 +1,7 @@
 <template>
-  <!-- Шаблон полностью сохранён без изменений -->
-  <div class="circuit-container">
-    <div class="circuit-3d-container">
+  <div class="content">
+    <div class="circuit-container">
+    <!--
       <div class="controls-panel">
         <h4>Управление</h4>
 
@@ -49,6 +49,27 @@
           </div>
         </div>
       </div>
+    -->
+
+      <div class="scene-section">
+        <!-- Оверлей загрузки -->
+        <div v-if="isLoading" class="loading-overlay">
+          <div class="loading-content">
+            <div class="spinner"></div>
+            <div class="loading-text">Загрузка 3D-моделей...</div>
+            <div class="loading-progress">
+              <div class="progress-bar">
+                <div
+                    class="progress-fill"
+                    :style="{ width: loadingProgress + '%' }"
+                ></div>
+              </div>
+              <div class="progress-text">
+                {{ loadedModelsCount / totalModelsCount * 100 }} %
+              </div>
+            </div>
+          </div>
+        </div>
 
       <div class="scene-container">
         <!-- Оверлей загрузки -->
@@ -2175,6 +2196,8 @@ strong, div {
 .snapshots-table {
   margin: 16px 0;
   overflow-x: auto;
+  overflow-y: scroll;
+  height: 30%;
 }
 
 .snapshots-table table {
