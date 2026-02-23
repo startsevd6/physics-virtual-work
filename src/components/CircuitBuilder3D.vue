@@ -111,6 +111,7 @@
               <button @click="saveSnapshot">Сохранить показания</button>
               <button @click="resetValues">Сброс</button>
               <button @click="updateCharts">Обновить графики</button>
+              <button @click="checkCircuit">Проверить схему</button>
             </div>
           </div>
         </div>
@@ -310,6 +311,9 @@ export default defineComponent({
     // Для хранения созданных проводов и состояния выбора первого порта
     const wires = ref<THREE.Mesh[]>([]);
     const firstSelectedPort = ref<string | null>(null);
+
+    // Массив соединений (какие порты соединены)
+    const connections = ref<Array<{port1: string, port2: string}>>([]);
 
     // Функция для обновления прогресса загрузки
     function incrementLoadedModels() {
@@ -1467,6 +1471,9 @@ export default defineComponent({
         wires.value = [];
       }
 
+      // Очищаем список соединений
+      connections.value = [];
+
       updateAllDisplays();
       updateCurrent();
       updateVoltageSpinnerRotation();
@@ -1497,20 +1504,31 @@ export default defineComponent({
     }*/
 
     // Функция создания гнущихся проводов
+    const WIRE_COLORS = [0xff0000, 0xffa500, 0xffa5c00, 0xffff00, 0x0000ff];
     function createWireBetweenPorts(portName1: string, portName2: string) {
       if (!scene) return;
+
+      // Проверяем, остались ли доступные цвета
+      if (wires.value.length >= WIRE_COLORS.length) {
+        alert('Достигнуто максимальное количество проводов');
+        return;
+      }
+
       const map = decorativeElementsMap.value;
       const p1 = map.get(portName1)?.position.clone();
       const p2 = map.get(portName2)?.position.clone();
       if (!p1 || !p2) return;
 
-      // Создаём три точки: начало, контрольная точка выше, конец
+      // Выбираем цвет по порядку
+      const color = WIRE_COLORS[wires.value.length];
+
+      // Создаём изогнутый провод
       const mid = new THREE.Vector3().lerpVectors(p1, p2, 0.5);
-      mid.z += 0.2; // смещаем середину для изгиба
+      mid.z = 0.8; // смещаем середину для изгиба
 
       const curve = new CatmullRomCurve3([p1, mid, p2]);
       const tubeGeo = new TubeGeometry(curve, 64, 0.015, 8, false);
-      const material = new THREE.MeshStandardMaterial({ color: 0x333333 }); // чёрный провод
+      const material = new THREE.MeshStandardMaterial({ color });
       const wire = new THREE.Mesh(tubeGeo, material);
 
       wire.castShadow = showShadows.value;
@@ -1518,6 +1536,9 @@ export default defineComponent({
 
       scene.add(wire);
       wires.value.push(wire);
+
+      // Сохраняем соединение
+      connections.value.push({ port1: portName1, port2: portName2 });
     }
 
     // Функции для выделения портов
@@ -1556,6 +1577,29 @@ export default defineComponent({
           }
         }
       });
+    }
+
+    // Функция проверки схемы
+    function checkCircuit() {
+      const requiredPairs = [
+        ['port_1_1', 'port_thermistor_13'],
+        ['port_1_2', 'port_2_4'],
+        ['port_2_3', 'port_thermistor_17'],
+        ['port_thermistor_12', 'port_1_3'],
+        ['port_1_4', 'port_thermistor_14']
+      ];
+
+      const allPresent = requiredPairs.every(([a, b]) => {
+        return connections.value.some(conn =>
+            (conn.port1 === a && conn.port2 === b) || (conn.port1 === b && conn.port2 === a)
+        );
+      });
+
+      if (allPresent) {
+        alert('Схема собрана верно');
+      } else {
+        alert('Схема собрана неверно');
+      }
     }
 
     // Следим за изменением типа терморезистора
@@ -1617,6 +1661,9 @@ export default defineComponent({
         wires.value = [];
       }
 
+      // Очищаем соединения
+      connections.value = [];
+
       // Уничтожаем графики
       if (uiChart) {
         uiChart.destroy();
@@ -1657,6 +1704,7 @@ export default defineComponent({
       toggleShadows,
       getThermistorTypeLabel,
       updateCharts,
+      checkCircuit,
     };
   }
 });
