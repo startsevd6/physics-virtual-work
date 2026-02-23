@@ -12,11 +12,66 @@
               {{ showShadows ? 'Выключить' : 'Включить' }}
             </button>
           </div>
+
+          <div class="thermistor-type-selector">
+            <label>Тип терморезистора:</label>
+            <div class="radio-group">
+              <label>
+                <input
+                    type="radio"
+                    value="metal"
+                    v-model="selectedThermistorKind"
+                />
+                Металлический
+              </label>
+              <label>
+                <input
+                    type="radio"
+                    value="semiconductor"
+                    v-model="selectedThermistorKind"
+                />
+                Полупроводниковый
+              </label>
+            </div>
+          </div>
+
+          <div class="temperature-control">
+            <label>Температура (K)</label>
+            <input
+                type="range"
+                min="290"
+                max="390"
+                v-model.number="globalTemp"
+                class="slider"
+                @wheel.prevent="handleWheelScroll"
+            />
+            <div>{{ globalTemp }} K</div>
+          </div>
         </div>
       </div>
     -->
 
       <div class="scene-section">
+        <!-- Оверлей загрузки -->
+        <div v-if="isLoading" class="loading-overlay">
+          <div class="loading-content">
+            <div class="spinner"></div>
+            <div class="loading-text">Загрузка 3D-моделей...</div>
+            <div class="loading-progress">
+              <div class="progress-bar">
+                <div
+                    class="progress-fill"
+                    :style="{ width: loadingProgress + '%' }"
+                ></div>
+              </div>
+              <div class="progress-text">
+                {{ loadedModelsCount / totalModelsCount * 100 }} %
+              </div>
+            </div>
+          </div>
+        </div>
+
+      <div class="scene-container">
         <!-- Оверлей загрузки -->
         <div v-if="isLoading" class="loading-overlay">
           <div class="loading-content">
@@ -48,19 +103,6 @@
         <div>
           <h4>Компоненты схемы</h4>
           <div class="current-components">
-            <!-- Температурный регулятор -->
-            <div class="slot-info temperature-control">
-            <label><strong>Температура (K)</strong></label>
-            <input
-                type="range"
-                min="290"
-                max="390"
-                v-model.number="globalTemp"
-                class="slider"
-                @wheel.prevent="handleWheelScroll"
-            />
-            <div>{{ globalTemp }} K</div>
-            </div>
             <!-- Источник напряжения -->
             <div class="slot-info">
               <strong>Источник напряжения</strong>
@@ -92,6 +134,70 @@
                 </div>
               </div>
             </div>
+
+            <!-- Терморезистор -->
+            <div class="slot-info">
+              <strong>{{ thermistorComponent.data.kind === 'metal' ? 'Металлический' : 'Полупроводниковый' }} терморезистор</strong>
+              <div class="component-params">
+                <div class="params-column">
+                  <div class="param-row">
+                    <label>R0 (Ω):</label>
+                    <div class="param-controls">
+                      <input
+                          type="number"
+                          min="1"
+                          max="10000"
+                          step="1"
+                          v-model.number="thermistorComponent.data.R0"
+                          class="input"
+                      />
+                      <span class="param-unit">Ω</span>
+                    </div>
+                  </div>
+
+                  <div v-if="thermistorComponent.data.kind === 'metal'">
+                    <div class="param-row">
+                      <label>α (1/K):</label>
+                      <div class="param-controls">
+                        <input
+                            type="number"
+                            min="0.001"
+                            max="0.01"
+                            step="0.0001"
+                            v-model.number="thermistorComponent.data.alpha"
+                            class="input"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div v-else>
+                    <div class="param-row">
+                      <label>B (K):</label>
+                      <div class="param-controls">
+                        <input
+                            type="number"
+                            min="1000"
+                            max="5000"
+                            step="1"
+                            v-model.number="thermistorComponent.data.B"
+                            class="input"
+                        />
+                        <span class="param-unit">K</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="param-info">
+                  <div>Температура: {{ globalTemp }} K</div>
+                  <div>
+                    Текущее сопротивление:
+                    {{ calculateCurrentResistance(thermistorComponent.data).toFixed(2) }} Ω
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Амперметр -->
             <div class="slot-info">
               <strong>Амперметр</strong>
@@ -117,7 +223,7 @@
       </div>
     </div>
 
-    <div class="readings-container">
+    <div class="saved-readings">
       <h4>Сохранённые показания</h4>
       <div class="snapshots-table">
         <table>
@@ -141,45 +247,45 @@
           </tbody>
         </table>
       </div>
+    </div>
 
-      <!-- Секция с графиками -->
-      <div class="charts-section">
-        <h4>Графики зависимостей</h4>
+    <!-- Секция с графиками -->
+    <div class="charts-section">
+      <h4>Графики зависимостей</h4>
 
-        <div class="charts-container">
-          <!-- График U = f(I) при T=300K -->
-          <div class="chart-card">
-            <h5>Зависимость напряжения от тока U = f(I) при T=300K</h5>
-            <div class="chart-wrapper">
-              <canvas ref="uiChartCanvas" class="chart-canvas"></canvas>
+      <div class="charts-container">
+        <!-- График U = f(I) при T=300K -->
+        <div class="chart-card">
+          <h5>Зависимость напряжения от тока U = f(I) при T=300K</h5>
+          <div class="chart-wrapper">
+            <canvas ref="uiChartCanvas" class="chart-canvas"></canvas>
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item">
+              <span class="legend-color metal-color"></span>
+              <span>Металлический терморезистор</span>
             </div>
-            <div class="chart-legend">
-              <div class="legend-item">
-                <span class="legend-color metal-color"></span>
-                <span>Металлический терморезистор</span>
-              </div>
-              <div class="legend-item">
-                <span class="legend-color semiconductor-color"></span>
-                <span>Полупроводниковый терморезистор</span>
-              </div>
+            <div class="legend-item">
+              <span class="legend-color semiconductor-color"></span>
+              <span>Полупроводниковый терморезистор</span>
             </div>
           </div>
+        </div>
 
-          <!-- График R = f(T) -->
-          <div class="chart-card">
-            <h5>Зависимость сопротивления от температуры R = f(T)</h5>
-            <div class="chart-wrapper">
-              <canvas ref="rtChartCanvas" class="chart-canvas"></canvas>
+        <!-- График R = f(T) -->
+        <div class="chart-card">
+          <h5>Зависимость сопротивления от температуры R = f(T)</h5>
+          <div class="chart-wrapper">
+            <canvas ref="rtChartCanvas" class="chart-canvas"></canvas>
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item">
+              <span class="legend-color metal-color"></span>
+              <span>Металлический терморезистор</span>
             </div>
-            <div class="chart-legend">
-              <div class="legend-item">
-                <span class="legend-color metal-color"></span>
-                <span>Металлический терморезистор</span>
-              </div>
-              <div class="legend-item">
-                <span class="legend-color semiconductor-color"></span>
-                <span>Полупроводниковый терморезистор</span>
-              </div>
+            <div class="legend-item">
+              <span class="legend-color semiconductor-color"></span>
+              <span>Полупроводниковый терморезистор</span>
             </div>
           </div>
         </div>
@@ -195,12 +301,15 @@
 </template>
 
 <script lang="ts">
+
 import { defineComponent, onMounted, onUnmounted, ref, reactive, watch, nextTick } from 'vue';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshStandardMaterial, CatmullRomCurve3, TubeGeometry } from 'three';
+
 import { Chart, registerables } from 'chart.js';
+import 'chart.js/auto';
 import ErrorPopup from './ErrorPopup.vue';
 
 // Импортируем конфигурацию из отдельного файла
@@ -1679,53 +1788,15 @@ strong, div {
   color: #222222;
 }
 
-.content {
-  padding: 30px;
-
-  height: calc(100vh - 100px);
-  margin-top: 100px;
-  overflow-y: scroll;
-  scroll-snap-type: y mandatory;
-  scroll-padding: 30px;
-
+.circuit-container {
   display: flex;
   flex-direction: column;
-  gap: 60px;
-
-  opacity: 0;
-  transform: translateY(40px);
-  transition: opacity 0.6s ease-out 0.4s, transform 0.6s ease-out 0.4s;
-
-  /*
-  overflow-y: scroll;
-  scroll-snap-type: y mandatory;
-  scroll-padding: 100px;
-  */
-}
-
-
-.header--loaded ~ .content {
-  opacity: 1;
-  transform: translateY(0px);
-}
-
-
-.circuit-container {
-  min-height: calc(100vh - 160px);
-
-  scroll-snap-align: start;
-  display: flex;
   gap: 20px;
 }
 
-.readings-container {
-  min-height: calc(100vh - 160px);
-  scroll-snap-align: start;
-
-  background: #fff;
-  border-radius: 8px;
-  padding: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+.circuit-3d-container {
+  display: flex;
+  gap: 20px;
 }
 
 .controls-panel {
@@ -1737,7 +1808,7 @@ strong, div {
   position: relative;
 }
 
-.scene-section {
+.scene-container {
   flex: 1;
   position: relative;
   width: calc(100vw - 900px);
@@ -1745,7 +1816,7 @@ strong, div {
 
 .three-scene {
   width: 100%;
-  height: 100%;
+  height: 746px;
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(0,0,0,0.15);
@@ -2063,7 +2134,6 @@ strong, div {
 .charts-container {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-  grid-template-rows: 1fr;
   gap: 24px;
 }
 
@@ -2084,7 +2154,7 @@ strong, div {
 
 .chart-wrapper {
   position: relative;
-  height: 70%;
+  height: 350px;
   width: 100%;
 }
 
@@ -2181,17 +2251,15 @@ button:nth-child(3):hover {
 }
 
 @media (max-width: 1900px) {
-  .content {
+  .circuit-container {
     flex-direction: column;
   }
 }
 
 @media (max-width: 1300px) {
-  /*
-  .circuit-container {
+  .circuit-3d-container {
     flex-direction: column-reverse;
   }
-  */
 
   .controls-panel {
     width: 100%;
@@ -2202,7 +2270,7 @@ button:nth-child(3):hover {
     justify-content: space-around;
   }
 
-  .scene-section {
+  .scene-container {
     width: 100%;
   }
 
