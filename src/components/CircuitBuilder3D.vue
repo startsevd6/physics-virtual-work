@@ -1497,20 +1497,31 @@ export default defineComponent({
     }*/
 
     // Функция создания гнущихся проводов
+    const WIRE_COLORS = [0xff0000, 0xffa500, 0xffa5c00, 0xffff00, 0x0000ff];
     function createWireBetweenPorts(portName1: string, portName2: string) {
       if (!scene) return;
+
+      // Проверяем, остались ли доступные цвета
+      if (wires.value.length >= WIRE_COLORS.length) {
+        alert('Достигнуто максимальное количество проводов');
+        return;
+      }
+
       const map = decorativeElementsMap.value;
       const p1 = map.get(portName1)?.position.clone();
       const p2 = map.get(portName2)?.position.clone();
       if (!p1 || !p2) return;
 
-      // Создаём три точки: начало, контрольная точка выше, конец
+      // Выбираем цвет по порядку
+      const color = WIRE_COLORS[wires.value.length];
+
+      // Создаём изогнутый провод
       const mid = new THREE.Vector3().lerpVectors(p1, p2, 0.5);
-      mid.z += 0.2; // смещаем середину для изгиба
+      mid.z = 0.8; // смещаем середину для изгиба
 
       const curve = new CatmullRomCurve3([p1, mid, p2]);
       const tubeGeo = new TubeGeometry(curve, 64, 0.015, 8, false);
-      const material = new THREE.MeshStandardMaterial({ color: 0x333333 }); // чёрный провод
+      const material = new THREE.MeshStandardMaterial({ color });
       const wire = new THREE.Mesh(tubeGeo, material);
 
       wire.castShadow = showShadows.value;
