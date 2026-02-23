@@ -195,23 +195,175 @@ export const decorativeConfigs: DecorativeElement[] = [
     scale: 0.1,
     shadowEnabled: true
   },
-  // Порты для терморезистора (ИСПРАВЛЕННЫЕ КООРДИНАТЫ)
-  {
-    name: 'port_thermistor_1',
-    path: './models/port.glb',
-    position: new THREE.Vector3(0.95, 0.08, -0.15), // Справа, выше центра, ближе к камере
-    rotation: new THREE.Euler(0, -Math.PI/2, 0),
-    scale: 0.1, // Временно увеличен для видимости
-    shadowEnabled: true
-  },
-  {
-    name: 'port_thermistor_2',
-    path: './models/port.glb',
-    position: new THREE.Vector3(0.85, 0.08, -0.15), // Левее первого порта
-    rotation: new THREE.Euler(0, -Math.PI/2, 0),
-    scale: 0.1, // Временно увеличен для видимости
-    shadowEnabled: true
-  }
+ // Порты для терморезистора
+{
+  name: 'port_thermistor_1',
+  path: './models/port.glb',
+  position: new THREE.Vector3(0.78, 0.11, -0.1),
+  rotation: new THREE.Euler(0, -Math.PI/2, Math.PI/4),
+  scale: 0.1,
+  shadowEnabled: true
+},
+{
+  name: 'port_thermistor_2',
+  path: './models/port.glb',
+  position: new THREE.Vector3(0.83, 0.13, -0.12),
+  rotation: new THREE.Euler(0, -Math.PI/2, Math.PI/4),
+  scale: 0.1,
+  shadowEnabled: true
+},
+{
+  name: 'port_thermistor_3',
+  path: './models/port.glb',
+  position: new THREE.Vector3(0.88, 0.15, -0.14),
+  rotation: new THREE.Euler(0, -Math.PI/2, Math.PI/4),
+  scale: 0.1,
+  shadowEnabled: true
+},
+{
+  name: 'port_thermistor_4',
+  path: './models/port.glb',
+  position: new THREE.Vector3(0.93, 0.17, -0.16),
+  rotation: new THREE.Euler(0, -Math.PI/2, Math.PI/4),
+  scale: 0.1,
+  shadowEnabled: true
+},
+{
+  name: 'port_thermistor_5',
+  path: './models/port.glb',
+  position: new THREE.Vector3(0.98, 0.19, -0.18),
+  rotation: new THREE.Euler(0, -Math.PI/2, Math.PI/4),
+  scale: 0.1,
+  shadowEnabled: true
+},
+{
+  name: 'port_thermistor_6',
+  path: './models/port.glb',
+  position: new THREE.Vector3(1.03, 0.21, -0.2),
+  rotation: new THREE.Euler(0, -Math.PI/2, Math.PI/4),
+  scale: 0.1,
+  shadowEnabled: true
+},
+{
+  name: 'port_thermistor_7',
+  path: './models/port.glb',
+  position: new THREE.Vector3(1.08, 0.23, -0.22),
+  rotation: new THREE.Euler(0, -Math.PI/2, Math.PI/4),
+  scale: 0.1,
+  shadowEnabled: true
+},
+{
+  name: 'port_thermistor_8',
+  path: './models/port.glb',
+  position: new THREE.Vector3(1.13, 0.25, -0.24),
+  rotation: new THREE.Euler(0, -Math.PI/2, Math.PI/4),
+  scale: 0.1,
+  shadowEnabled: true
+},
+{
+  name: 'port_thermistor_9',
+  path: './models/port.glb',
+  position: new THREE.Vector3(1.18, 0.27, -0.26),
+  rotation: new THREE.Euler(0, -Math.PI/2, Math.PI/4),
+  scale: 0.1,
+  shadowEnabled: true
+},
+{
+  name: 'port_thermistor_10',
+  path: './models/port.glb',
+  position: new THREE.Vector3(1.23, 0.29, -0.28),
+  rotation: new THREE.Euler(0, -Math.PI/2, Math.PI/4),
+  scale: 0.1,
+  shadowEnabled: true
+},
+{
+  name: 'port_thermistor_11',
+  path: './models/port.glb',
+  position: new THREE.Vector3(1.28, 0.31, -0.3),
+  rotation: new THREE.Euler(0, -Math.PI/2, Math.PI/4),
+  scale: 0.1,
+  shadowEnabled: true
+},
+{
+  name: 'port_thermistor_12',
+  path: './models/port.glb',
+  position: new THREE.Vector3(0.78, 0.09, -0.1),
+  rotation: new THREE.Euler(0, -Math.PI/2, -Math.PI/4),
+  scale: 0.1,
+  shadowEnabled: true
+},
+{
+  name: 'port_thermistor_13',
+  path: './models/port.glb',
+  position: new THREE.Vector3(0.83, 0.11, -0.12),
+  rotation: new THREE.Euler(0, -Math.PI/2, -Math.PI/4),
+  scale: 0.1,
+  shadowEnabled: true
+},
+{
+  name: 'port_thermistor_14',
+  path: './models/port.glb',
+  position: new THREE.Vector3(0.88, 0.13, -0.14),
+  rotation: new THREE.Euler(0, -Math.PI/2, -Math.PI/4),
+  scale: 0.1,
+  shadowEnabled: true
+},
+{
+  name: 'port_thermistor_15',
+  path: './models/port.glb',
+  position: new THREE.Vector3(0.93, 0.15, -0.16),
+  rotation: new THREE.Euler(0, -Math.PI/2, -Math.PI/4),
+  scale: 0.1,
+  shadowEnabled: true
+},
+{
+  name: 'port_thermistor_16',
+  path: './models/port.glb',
+  position: new THREE.Vector3(0.98, 0.17, -0.18),
+  rotation: new THREE.Euler(0, -Math.PI/2, -Math.PI/4),
+  scale: 0.1,
+  shadowEnabled: true
+},
+{
+  name: 'port_thermistor_17',
+  path: './models/port.glb',
+  position: new THREE.Vector3(1.03, 0.19, -0.2),
+  rotation: new THREE.Euler(0, -Math.PI/2, -Math.PI/4),
+  scale: 0.1,
+  shadowEnabled: true
+},
+{
+  name: 'port_thermistor_18',
+  path: './models/port.glb',
+  position: new THREE.Vector3(1.08, 0.21, -0.22),
+  rotation: new THREE.Euler(0, -Math.PI/2, -Math.PI/4),
+  scale: 0.1,
+  shadowEnabled: true
+},
+{
+  name: 'port_thermistor_19',
+  path: './models/port.glb',
+  position: new THREE.Vector3(1.13, 0.23, -0.24),
+  rotation: new THREE.Euler(0, -Math.PI/2, -Math.PI/4),
+  scale: 0.1,
+  shadowEnabled: true
+},
+{
+  name: 'port_thermistor_20',
+  path: './models/port.glb',
+  position: new THREE.Vector3(1.18, 0.25, -0.26),
+  rotation: new THREE.Euler(0, -Math.PI/2, -Math.PI/4),
+  scale: 0.1,
+  shadowEnabled: true
+},
+{
+  name: 'port_thermistor_21',
+  path: './models/port.glb',
+  position: new THREE.Vector3(1.23, 0.27, -0.28),
+  rotation: new THREE.Euler(0, -Math.PI/2, -Math.PI/4),
+  scale: 0.1,
+  shadowEnabled: true
+}
 ];
 
 // Конфигурация слотов
