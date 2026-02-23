@@ -199,6 +199,7 @@ import { defineComponent, onMounted, onUnmounted, ref, reactive, watch, nextTick
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshStandardMaterial, CatmullRomCurve3, TubeGeometry } from 'three';
 import { Chart, registerables } from 'chart.js';
 import ErrorPopup from './ErrorPopup.vue';
 
@@ -298,6 +299,18 @@ export default defineComponent({
     const snapshots = ref<any[]>([]);
     const decorativeElements = ref<THREE.Object3D[]>([]); // Храним ссылки на декоративные элементы
 
+    // Карта для быстрого доступа к декоративным элементам по имени
+    const decorativeElementsMap = ref<Map<string, THREE.Object3D>>(new Map());
+
+    // Для выделения портов
+    const selectedPortName = ref<string | null>(null);
+    const portMeshes = ref<THREE.Mesh[]>([]);
+    const meshToPortMap = ref<Map<THREE.Mesh, string>>(new Map());
+
+    // Для хранения созданных проводов и состояния выбора первого порта
+    const wires = ref<THREE.Mesh[]>([]);
+    const firstSelectedPort = ref<string | null>(null);
+
     // Функция для обновления прогресса загрузки
     function incrementLoadedModels() {
       loadedModelsCount.value++;
@@ -372,12 +385,35 @@ export default defineComponent({
 
           scene.add(model);
           decorativeElements.value.push(model);
+          // Сохраняем в карту по имени
+          decorativeElementsMap.value.set(config.name, model);
 
           // Сохраняем ссылки на спиннеры
           if (config.name === 'spinner_for_voltage_2') {
             voltageSpinner.value = model;
           } else if (config.name === 'spinner_for_thermistor') {
             thermistorSpinner.value = model;
+          }
+
+          // Если это порт, обрабатываем его меши для кликабельности и уникальности материалов
+          if (config.name.includes('port')) {
+            // Проходим по всем дочерним мешам
+            model.traverse((child) => {
+              if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                // Клонируем материал, чтобы он был уникальным для этого порта
+                if (mesh.material) {
+                  if (Array.isArray(mesh.material)) {
+                    mesh.material = mesh.material.map(mat => mat.clone());
+                  } else {
+                    mesh.material = mesh.material.clone();
+                  }
+                }
+                // Добавляем меш в массив для рейкастинга
+                portMeshes.value.push(mesh);
+                meshToPortMap.value.set(mesh, config.name);
+              }
+            });
           }
 
           incrementLoadedModels();
@@ -389,6 +425,8 @@ export default defineComponent({
           if (fallback) {
             scene.add(fallback);
             decorativeElements.value.push(fallback);
+            // Сохраняем и заглушку
+            decorativeElementsMap.value.set(config.name, fallback);
 
             // Сохраняем ссылки для заглушек тоже
             if (config.name === 'spinner_for_voltage_2') {
@@ -396,8 +434,28 @@ export default defineComponent({
             } else if (config.name === 'spinner_for_thermistor') {
               thermistorSpinner.value = fallback;
             }
+
+            // Если это порт, обрабатываем заглушку
+            if (config.name.includes('port')) {
+              fallback.traverse((child) => {
+                if ((child as THREE.Mesh).isMesh) {
+                  const mesh = child as THREE.Mesh;
+                  // Клонируем материал
+                  if (mesh.material) {
+                    if (Array.isArray(mesh.material)) {
+                      mesh.material = mesh.material.map(mat => mat.clone());
+                    } else {
+                      mesh.material = mesh.material.clone();
+                    }
+                  }
+                  portMeshes.value.push(mesh);
+                  meshToPortMap.value.set(mesh, config.name);
+                }
+              });
+            }
+
+            incrementLoadedModels();
           }
-          incrementLoadedModels();
         }
       }
     }
@@ -425,7 +483,7 @@ export default defineComponent({
       const rotationAngle = -normalizedTemp * Math.PI * 1.75;
 
       // Вращаем вокруг оси Y
-      thermistorSpinner.value.rotation.y = -Math.PI/2 + rotationAngle;
+      thermistorSpinner.value.rotation.y = 4*Math.PI/10 + rotationAngle;
     }
 
     // Следим за изменением напряжения
@@ -1102,6 +1160,53 @@ export default defineComponent({
       setTimeout(() => {
         initCharts();
       }, 1000);
+
+      // Обработчик клика для выделения портов и создания проводов
+      const onClick = (event: MouseEvent) => {
+        if (!renderer || !camera || !scene) return;
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        // Вычисляем координаты мыши в нормализованных координатах (-1 до 1)
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+
+        // Проверяем пересечения с мешами портов
+        const intersects = raycaster.intersectObjects(portMeshes.value);
+
+        if (intersects.length > 0) {
+          // Берем первый меш, находим имя порта
+          const hitMesh = intersects[0]?.object as THREE.Mesh;
+          const portName = meshToPortMap.value.get(hitMesh);
+          if (!portName) return;
+
+          if (firstSelectedPort.value === null) {
+            // Первый клик - выбираем порт
+            firstSelectedPort.value = portName;
+            highlightPort(portName);
+          } else if (firstSelectedPort.value === portName) {
+            // Клик на тот же порт - снимаем выделение
+            firstSelectedPort.value = null;
+            highlightPort(null);
+          } else {
+            // Клик на другой порт - создаём провод
+            createWireBetweenPorts(firstSelectedPort.value, portName);
+            // Снимаем выделение
+            firstSelectedPort.value = null;
+            highlightPort(null);
+          }
+        } else {
+          // Клик не по порту - снимаем выделение
+          firstSelectedPort.value = null;
+          highlightPort(null);
+        }
+      };
+
+      renderer.domElement.addEventListener('click', onClick);
     }
 
     // Инициализация всех компонентов схемы
@@ -1342,6 +1447,26 @@ export default defineComponent({
         controls.update();
       }
 
+      // Снимаем выделение порта и удаляем все созданные провода
+      firstSelectedPort.value = null;
+      highlightPort(null);
+
+      // Удаляем все провода из сцены
+      if (scene) {
+        wires.value.forEach(wire => {
+          scene?.remove(wire);
+          if (wire.geometry) wire.geometry.dispose();
+          if (wire.material) {
+            if (Array.isArray(wire.material)) {
+              wire.material.forEach(m => m.dispose());
+            } else {
+              wire.material.dispose();
+            }
+          }
+        });
+        wires.value = [];
+      }
+
       updateAllDisplays();
       updateCurrent();
       updateVoltageSpinnerRotation();
@@ -1370,6 +1495,68 @@ export default defineComponent({
       errorMessage.value = message;
       showError.value = true;
     }*/
+
+    // Функция создания гнущихся проводов
+    function createWireBetweenPorts(portName1: string, portName2: string) {
+      if (!scene) return;
+      const map = decorativeElementsMap.value;
+      const p1 = map.get(portName1)?.position.clone();
+      const p2 = map.get(portName2)?.position.clone();
+      if (!p1 || !p2) return;
+
+      // Создаём три точки: начало, контрольная точка выше, конец
+      const mid = new THREE.Vector3().lerpVectors(p1, p2, 0.5);
+      mid.z += 0.2; // смещаем середину для изгиба
+
+      const curve = new CatmullRomCurve3([p1, mid, p2]);
+      const tubeGeo = new TubeGeometry(curve, 64, 0.015, 8, false);
+      const material = new THREE.MeshStandardMaterial({ color: 0x333333 }); // чёрный провод
+      const wire = new THREE.Mesh(tubeGeo, material);
+
+      wire.castShadow = showShadows.value;
+      wire.receiveShadow = showShadows.value;
+
+      scene.add(wire);
+      wires.value.push(wire);
+    }
+
+    // Функции для выделения портов
+    function highlightPort(portName: string | null) {
+      // Сначала снимаем выделение с предыдущего порта
+      if (selectedPortName.value) {
+        const prevPort = decorativeElementsMap.value.get(selectedPortName.value);
+        if (prevPort) {
+          setPortEmissive(prevPort, 0x000000);
+        }
+      }
+
+      // Если передан новый порт, выделяем его
+      if (portName) {
+        const newPort = decorativeElementsMap.value.get(portName);
+        if (newPort) {
+          setPortEmissive(newPort, 0x444400); // желтоватое свечение
+        }
+        selectedPortName.value = portName;
+      } else {
+        selectedPortName.value = null;
+      }
+    }
+
+    function setPortEmissive(portObject: THREE.Object3D, colorHex: number) {
+      portObject.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          const mesh = child as THREE.Mesh;
+          if (mesh.material) {
+            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+            materials.forEach(mat => {
+              if (mat instanceof MeshStandardMaterial) {
+                mat.emissive.setHex(colorHex);
+              }
+            });
+          }
+        }
+      });
+    }
 
     // Следим за изменением типа терморезистора
     watch(selectedThermistorKind, updateThermistorKind);
@@ -1413,6 +1600,22 @@ export default defineComponent({
           }
         }
       });
+
+      // Удаляем все провода
+      if (scene) {
+        wires.value.forEach(wire => {
+          scene?.remove(wire);
+          if (wire.geometry) wire.geometry.dispose();
+          if (wire.material) {
+            if (Array.isArray(wire.material)) {
+              wire.material.forEach(m => m.dispose());
+            } else {
+              wire.material.dispose();
+            }
+          }
+        });
+        wires.value = [];
+      }
 
       // Уничтожаем графики
       if (uiChart) {
