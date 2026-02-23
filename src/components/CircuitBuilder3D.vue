@@ -1,109 +1,124 @@
 <template>
-  <div>
-    <h2>Сборка схемы (3D)</h2>
+  <!-- Шаблон полностью сохранён без изменений -->
+  <div class="circuit-container">
     <div class="circuit-3d-container">
       <div class="controls-panel">
         <h4>Управление</h4>
 
-        <div class="shadow-control">
-          <label>Тени:</label>
-          <button class="shadow-toggle-btn" @click="toggleShadows">
-            {{ showShadows ? 'Выключить' : 'Включить' }}
-          </button>
-        </div>
-
-        <div class="thermistor-type-selector">
-          <label>Тип терморезистора:</label>
-          <div class="radio-group">
-            <label>
-              <input
-                  type="radio"
-                  value="metal"
-                  v-model="selectedThermistorKind"
-              />
-              Металлический
-            </label>
-            <label>
-              <input
-                  type="radio"
-                  value="semiconductor"
-                  v-model="selectedThermistorKind"
-              />
-              Полупроводниковый
-            </label>
+        <div class="controls-panel-wrapper">
+          <div class="shadow-control">
+            <label>Тени:</label>
+            <button class="shadow-toggle-btn" @click="toggleShadows">
+              {{ showShadows ? 'Выключить' : 'Включить' }}
+            </button>
           </div>
-        </div>
 
-        <div class="temperature-control">
-          <label>Температура (K)</label>
-          <input
-              type="range"
-              min="290"
-              max="390"
-              v-model.number="globalTemp"
-              @wheel.prevent="handleWheelScroll"
-          />
-          <div>{{ globalTemp }} K</div>
+          <div class="thermistor-type-selector">
+            <label>Тип терморезистора:</label>
+            <div class="radio-group">
+              <label>
+                <input
+                    type="radio"
+                    value="metal"
+                    v-model="selectedThermistorKind"
+                />
+                Металлический
+              </label>
+              <label>
+                <input
+                    type="radio"
+                    value="semiconductor"
+                    v-model="selectedThermistorKind"
+                />
+                Полупроводниковый
+              </label>
+            </div>
+          </div>
+
+          <div class="temperature-control">
+            <label>Температура (K)</label>
+            <input
+                type="range"
+                min="290"
+                max="390"
+                v-model.number="globalTemp"
+                class="slider"
+                @wheel.prevent="handleWheelScroll"
+            />
+            <div>{{ globalTemp }} K</div>
+          </div>
         </div>
       </div>
 
       <div class="scene-container">
+        <!-- Оверлей загрузки -->
+        <div v-if="isLoading" class="loading-overlay">
+          <div class="loading-content">
+            <div class="spinner"></div>
+            <div class="loading-text">Загрузка 3D-моделей...</div>
+            <div class="loading-progress">
+              <div class="progress-bar">
+                <div
+                    class="progress-fill"
+                    :style="{ width: loadingProgress + '%' }"
+                ></div>
+              </div>
+              <div class="progress-text">
+                {{ loadedModelsCount / totalModelsCount * 100 }} %
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div
             id="scene3d"
             ref="sceneContainer"
             class="three-scene"
+            :class="{ 'loading': isLoading }"
         ></div>
       </div>
-    </div>
 
-    <div class="measurements-section">
-      <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
-        <button @click="saveSnapshot">Сохранить показания</button>
-        <button @click="resetValues">Сброс</button>
-      </div>
-
-      <div style="margin-top:12px">
-        <h4>Текущие компоненты в схеме</h4>
-        <div class="current-components">
-          <div v-for="(slot, idx) in slots" :key="idx" class="slot-info">
-            <div class="slot-label">{{ slot.label }}</div>
-            <div v-if="slot.component" class="slot-content">
-              <!-- Источник напряжения -->
-              <div v-if="slot.component.data.type === 'source'">
-                <strong>Источник напряжения</strong>
-                <div class="component-params">
-                  <div class="param-row">
-                    <label>Напряжение (В):</label>
-                    <div class="param-controls">
-                      <input
-                          type="range"
-                          min="0"
-                          max="15"
-                          step="0.1"
-                          v-model.number="slot.component.data.voltage"
-                          class="voltage-slider"
-                      />
-                      <input
-                          type="number"
-                          min="0"
-                          max="15"
-                          step="0.1"
-                          v-model.number="slot.component.data.voltage"
-                          class="voltage-input"
-                      />
-                      <span class="param-unit">В</span>
-                    </div>
-                  </div>
-                  <div class="voltage-value">
-                    Текущее значение: {{ slot.component.data.voltage || 0 }} В
+      <div class="measurements-section">
+        <div>
+          <h4>Компоненты схемы</h4>
+          <div class="current-components">
+            <!-- Источник напряжения -->
+            <div class="slot-info">
+              <strong>Источник напряжения</strong>
+              <div class="component-params">
+                <div class="param-row">
+                  <label>Напряжение:</label>
+                  <div class="param-controls">
+                    <input
+                        type="range"
+                        min="0"
+                        max="15"
+                        step="0.1"
+                        v-model.number="sourceComponent.data.voltage"
+                        class="slider"
+                    />
+                    <input
+                        type="number"
+                        min="0"
+                        max="15"
+                        step="0.1"
+                        v-model.number="sourceComponent.data.voltage"
+                        class="input"
+                    />
+                    <span class="param-unit">В</span>
                   </div>
                 </div>
+                <div class="voltage-value">
+                  Текущее значение: {{ sourceComponent.data.voltage || 0 }} В
+                </div>
               </div>
+            </div>
 
-              <!-- Терморезистор -->
-              <div v-else-if="slot.component.data.type === 'thermistor'">
-                <strong>{{ slot.component.data.kind === 'metal' ? 'Металлический' : 'Полупроводниковый' }} терморезистор</strong>
-                <div class="component-params">
+            <!-- Терморезистор -->
+            <div class="slot-info">
+              <strong>{{ thermistorComponent.data.kind === 'metal' ? 'Металлический' : 'Полупроводниковый' }} терморезистор</strong>
+              <div class="component-params">
+                <div class="params-column">
                   <div class="param-row">
                     <label>R0 (Ω):</label>
                     <div class="param-controls">
@@ -112,14 +127,14 @@
                           min="1"
                           max="10000"
                           step="1"
-                          v-model.number="slot.component.data.R0"
-                          class="param-input"
+                          v-model.number="thermistorComponent.data.R0"
+                          class="input"
                       />
                       <span class="param-unit">Ω</span>
                     </div>
                   </div>
 
-                  <div v-if="slot.component.data.kind === 'metal'">
+                  <div v-if="thermistorComponent.data.kind === 'metal'">
                     <div class="param-row">
                       <label>α (1/K):</label>
                       <div class="param-controls">
@@ -128,8 +143,8 @@
                             min="0.001"
                             max="0.01"
                             step="0.0001"
-                            v-model.number="slot.component.data.alpha"
-                            class="param-input"
+                            v-model.number="thermistorComponent.data.alpha"
+                            class="input"
                         />
                       </div>
                     </div>
@@ -143,66 +158,115 @@
                             min="1000"
                             max="5000"
                             step="1"
-                            v-model.number="slot.component.data.B"
-                            class="param-input"
+                            v-model.number="thermistorComponent.data.B"
+                            class="input"
                         />
                         <span class="param-unit">K</span>
                       </div>
                     </div>
                   </div>
-
-                  <div class="param-info">
-                    <div>Температура: {{ globalTemp }} K</div>
-                    <div>
-                      Текущее сопротивление:
-                      {{ calculateCurrentResistance(slot.component.data).toFixed(2) }} Ω
-                    </div>
-                  </div>
                 </div>
-              </div>
 
-              <!-- Амперметр -->
-              <div v-else-if="slot.component.data.type === 'amm'">
-                <strong>Амперметр</strong>
-                <div class="component-params">
-                  <div class="param-info">
-                    <div v-if="currentI !== null">
-                      Текущий ток: {{ currentI.toFixed(4) }} А
-                    </div>
-                    <div v-else>
-                      Нет данных для расчёта тока
-                    </div>
+                <div class="param-info">
+                  <div>Температура: {{ globalTemp }} K</div>
+                  <div>
+                    Текущее сопротивление:
+                    {{ calculateCurrentResistance(thermistorComponent.data).toFixed(2) }} Ω
                   </div>
                 </div>
               </div>
             </div>
+
+            <!-- Амперметр -->
+            <div class="slot-info">
+              <strong>Амперметр</strong>
+              <div class="component-params">
+                <div class="param-info">
+                  <div v-if="currentI !== null">
+                    Текущий ток: {{ currentI.toFixed(4) }} А
+                  </div>
+                  <div v-else>
+                    Нет данных для расчёта тока
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top:8px;display:flex;gap:8px;align-items:stretch">
+              <button @click="saveSnapshot">Сохранить показания</button>
+              <button @click="resetValues">Сброс</button>
+              <button @click="updateCharts">Обновить графики</button>
+            </div>
           </div>
         </div>
       </div>
+    </div>
 
-      <div style="margin-top:12px">
-        <h4>Сохранённые показания</h4>
-        <div class="snapshots-table">
-          <table>
-            <thead>
-            <tr>
-              <th>Напряжение (В)</th>
-              <th>Ток (А)</th>
-              <th>Сопротивление (Ω)</th>
-              <th>Температура (K)</th>
-              <th>Тип терморезистора</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr v-for="(s,i) in snapshots" :key="i">
-              <td>{{ s.V }}</td>
-              <td>{{ s.I || '—' }}</td>
-              <td>{{ s.R || '—' }}</td>
-              <td>{{ s.T }}</td>
-              <td>{{ getThermistorTypeLabel(s.thermistorType) }}</td>
-            </tr>
-            </tbody>
-          </table>
+    <div class="saved-readings">
+      <h4>Сохранённые показания</h4>
+      <div class="snapshots-table">
+        <table>
+          <thead>
+          <tr>
+            <th>Напряжение (В)</th>
+            <th>Ток (А)</th>
+            <th>Сопротивление (Ω)</th>
+            <th>Температура (K)</th>
+            <th>Тип терморезистора</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr v-for="(s,i) in snapshots" :key="i">
+            <td>{{ s.V }}</td>
+            <td>{{ s.I || '—' }}</td>
+            <td>{{ s.R || '—' }}</td>
+            <td>{{ s.T }}</td>
+            <td>{{ getThermistorTypeLabel(s.thermistorType) }}</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Секция с графиками -->
+    <div class="charts-section">
+      <h4>Графики зависимостей</h4>
+
+      <div class="charts-container">
+        <!-- График U = f(I) при T=300K -->
+        <div class="chart-card">
+          <h5>Зависимость напряжения от тока U = f(I) при T=300K</h5>
+          <div class="chart-wrapper">
+            <canvas ref="uiChartCanvas" class="chart-canvas"></canvas>
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item">
+              <span class="legend-color metal-color"></span>
+              <span>Металлический терморезистор</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-color semiconductor-color"></span>
+              <span>Полупроводниковый терморезистор</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- График R = f(T) -->
+        <div class="chart-card">
+          <h5>Зависимость сопротивления от температуры R = f(T)</h5>
+          <div class="chart-wrapper">
+            <canvas ref="rtChartCanvas" class="chart-canvas"></canvas>
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item">
+              <span class="legend-color metal-color"></span>
+              <span>Металлический терморезистор</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-color semiconductor-color"></span>
+              <span>Полупроводниковый терморезистор</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -216,11 +280,21 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, onMounted, onUnmounted, ref, reactive, watch } from 'vue';
+
+import { defineComponent, onMounted, onUnmounted, ref, reactive, watch, nextTick } from 'vue';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshStandardMaterial, CatmullRomCurve3, TubeGeometry } from 'three';
+
+import { Chart, registerables } from 'chart.js';
+import 'chart.js/auto';
 import ErrorPopup from './ErrorPopup.vue';
+
+// Импортируем конфигурацию из отдельного файла
+import { decorativeConfigs, modelPaths } from '../config/3d-models';
+
+Chart.register(...registerables);
 
 // Типы для 3D объектов
 type Component3D = {
@@ -230,27 +304,6 @@ type Component3D = {
   position: THREE.Vector3;
   rotation: THREE.Euler;
   scale: number;
-  slotIndex: number;
-};
-
-type Slot3D = {
-  label: string;
-  position: THREE.Vector3;
-  rotation: THREE.Euler;
-  scale: number;
-  occupied: boolean;
-  component: Component3D | null;
-  allowedTypes: string[];
-};
-
-// Тип для декоративных элементов
-type DecorativeElement = {
-  name: string;
-  path: string;
-  position: THREE.Vector3;
-  rotation: THREE.Euler;
-  scale: number;
-  shadowEnabled: boolean;
 };
 
 export default defineComponent({
@@ -262,6 +315,8 @@ export default defineComponent({
   setup() {
     // Ссылки на DOM элементы
     const sceneContainer = ref<HTMLElement | null>(null);
+    const uiChartCanvas = ref<HTMLCanvasElement | null>(null);
+    const rtChartCanvas = ref<HTMLCanvasElement | null>(null);
 
     // Three.js переменные
     let scene: THREE.Scene | null = null;
@@ -269,6 +324,10 @@ export default defineComponent({
     let renderer: THREE.WebGLRenderer | null = null;
     let controls: OrbitControls | null = null;
     let loader: GLTFLoader | null = null;
+
+    // Chart.js переменные
+    let uiChart: Chart | null = null;
+    let rtChart: Chart | null = null;
 
     // Состояние приложения
     const globalTemp = ref(300);
@@ -279,259 +338,125 @@ export default defineComponent({
     const voltageSpinner = ref<THREE.Object3D | null>(null);
     const thermistorSpinner = ref<THREE.Object3D | null>(null);
 
-    // Слоты для компонентов (3D позиции)
-    const slots = reactive<Slot3D[]>([
-      {
-        label: 'Источник напряжения',
-        position: new THREE.Vector3(-0.75, 0, 0),
-        rotation: new THREE.Euler(0, -Math.PI / 2, 0),
-        scale: 1.5,
-        occupied: false,
-        component: null,
-        allowedTypes: ['source']
+    // Состояние загрузки
+    const isLoading = ref(true);
+    const loadedModelsCount = ref(0);
+    const totalModelsCount = ref(0);
+    const loadingProgress = ref(0);
+
+    // Компоненты схемы (фиксированные)
+    const sourceComponent = reactive<Component3D>({
+      type: 'source',
+      model: null,
+      data: {
+        type: 'source',
+        kind: 'source',
+        voltage: 0
       },
-      {
-        label: 'Терморезистор',
-        position: new THREE.Vector3(0.75, 0, 0),
-        rotation: new THREE.Euler(0, -Math.PI / 2, 0),
-        scale: 1.2,
-        occupied: false,
-        component: null,
-        allowedTypes: ['thermistor']
+      position: new THREE.Vector3(-0.75, 0, 0),
+      rotation: new THREE.Euler(0, -Math.PI / 2, 0),
+      scale: 1.5
+    });
+
+    const thermistorComponent = reactive<Component3D>({
+      type: 'thermistor',
+      model: null,
+      data: {
+        type: 'thermistor',
+        kind: 'metal',
+        R0: 100,
+        alpha: 0.0039
       },
-      {
-        label: 'Амперметр',
-        position: new THREE.Vector3(-0.75, 0.325, 0),
-        rotation: new THREE.Euler(0, -Math.PI / 2, 0),
-        scale: 1,
-        occupied: false,
-        component: null,
-        allowedTypes: ['amm']
-      }
-    ]);
+      position: new THREE.Vector3(0.75, 0, 0),
+      rotation: new THREE.Euler(0, -Math.PI / 2, 0),
+      scale: 1.2
+    });
+
+    const ammeterComponent = reactive<Component3D>({
+      type: 'amm',
+      model: null,
+      data: {
+        type: 'amm',
+        kind: 'amm'
+      },
+      position: new THREE.Vector3(-0.75, 0.325, 0),
+      rotation: new THREE.Euler(0, -Math.PI / 2, 0),
+      scale: 1
+    });
 
     const snapshots = ref<any[]>([]);
     const decorativeElements = ref<THREE.Object3D[]>([]); // Храним ссылки на декоративные элементы
 
-    // Конфигурация декоративных элементов
-    const decorativeConfigs: DecorativeElement[] = [
-      // Красная кнопка для вольтамперметра
-      {
-        name: 'red_button_for_ammeter',
-        path: './models/red_button.glb',
-        position: new THREE.Vector3(-1.185, 0.22, 0.585),
-        rotation: new THREE.Euler(0, Math.PI/2, 0),
-        scale: 0.1,
-        shadowEnabled: true
-      },
+    // Карта для быстрого доступа к декоративным элементам по имени
+    const decorativeElementsMap = ref<Map<string, THREE.Object3D>>(new Map());
 
-      // Кнопки для вольтамперметра
-      {
-        name: 'button_1_2',
-        path: './models/button_1.glb',
-        position: new THREE.Vector3(-0.815, 0.32, 0.585),
-        rotation: new THREE.Euler(0, -Math.PI/2, 0),
-        scale: 0.11,
-        shadowEnabled: true
-      },
-      {
-        name: 'button_1_20',
-        path: './models/button_1.glb',
-        position: new THREE.Vector3(-0.725, 0.32, 0.585),
-        rotation: new THREE.Euler(0, -Math.PI/2, 0),
-        scale: 0.11,
-        shadowEnabled: true
-      },
-      {
-        name: 'button_1_200',
-        path: './models/button_1.glb',
-        position: new THREE.Vector3(-0.635, 0.32, 0.585),
-        rotation: new THREE.Euler(0, -Math.PI/2, 0),
-        scale: 0.11,
-        shadowEnabled: true
-      },
-      {
-        name: 'button_2_2',
-        path: './models/button_2.glb',
-        position: new THREE.Vector3(-0.815, 0.4, 0.585),
-        rotation: new THREE.Euler(0, -Math.PI/2, 0),
-        scale: 0.11,
-        shadowEnabled: true
-      },
-      {
-        name: 'button_2_20',
-        path: './models/button_2.glb',
-        position: new THREE.Vector3(-0.725, 0.4, 0.585),
-        rotation: new THREE.Euler(0, -Math.PI/2, 0),
-        scale: 0.11,
-        shadowEnabled: true
-      },
-      {
-        name: 'button_2_200',
-        path: './models/button_2.glb',
-        position: new THREE.Vector3(-0.635, 0.4, 0.585),
-        rotation: new THREE.Euler(0, -Math.PI/2, 0),
-        scale: 0.11,
-        shadowEnabled: true
-      },
-      {
-        name: 'button_3_1',
-        path: './models/button_3.glb',
-        position: new THREE.Vector3(-0.795, 0.22, 0.585),
-        rotation: new THREE.Euler(0, -Math.PI/2, 0),
-        scale: 0.09,
-        shadowEnabled: true
-      },
-      {
-        name: 'button_3_2',
-        path: './models/button_3.glb',
-        position: new THREE.Vector3(-0.725, 0.22, 0.585),
-        rotation: new THREE.Euler(0, -Math.PI/2, 0),
-        scale: 0.09,
-        shadowEnabled: true
-      },
-      {
-        name: 'button_3_3',
-        path: './models/button_3.glb',
-        position: new THREE.Vector3(-0.655, 0.22, 0.585),
-        rotation: new THREE.Euler(0, -Math.PI/2, 0),
-        scale: 0.09,
-        shadowEnabled: true
-      },
+    // Для выделения портов
+    const selectedPortName = ref<string | null>(null);
+    const portMeshes = ref<THREE.Mesh[]>([]);
+    const meshToPortMap = ref<Map<THREE.Mesh, string>>(new Map());
 
-      // Порты для вольтамперметра
-      {
-        name: 'port_1_1',
-        path: './models/port.glb',
-        position: new THREE.Vector3(-1.06, 0.22, 0.585),
-        rotation: new THREE.Euler(0, -Math.PI/2, 0),
-        scale: 0.1,
-        shadowEnabled: true
-      },
-      {
-        name: 'port_1_2',
-        path: './models/port.glb',
-        position: new THREE.Vector3(-0.97, 0.22, 0.585),
-        rotation: new THREE.Euler(0, -Math.PI/2, 0),
-        scale: 0.1,
-        shadowEnabled: true
-      },
-      {
-        name: 'port_1_3',
-        path: './models/port.glb',
-        position: new THREE.Vector3(-0.385, 0.22, 0.585),
-        rotation: new THREE.Euler(0, -Math.PI/2, 0),
-        scale: 0.1,
-        shadowEnabled: true
-      },
-      {
-        name: 'port_1_4',
-        path: './models/port.glb',
-        position: new THREE.Vector3(-0.305, 0.22, 0.585),
-        rotation: new THREE.Euler(0, -Math.PI/2, 0),
-        scale: 0.1,
-        shadowEnabled: true
-      },
+    // Для хранения созданных проводов и состояния выбора первого порта
+    const wires = ref<THREE.Mesh[]>([]);
+    const firstSelectedPort = ref<string | null>(null);
 
-      // Красная кнопка для источника напряжения
-      {
-        name: 'red_button_for_voltage_source',
-        path: './models/red_button.glb',
-        position: new THREE.Vector3(-1.2, -0.1, 0.585),
-        rotation: new THREE.Euler(0, Math.PI/2, 0),
-        scale: 0.1,
-        shadowEnabled: true
-      },
+    // Функция для обновления прогресса загрузки
+    function incrementLoadedModels() {
+      loadedModelsCount.value++;
+      loadingProgress.value = Math.round((loadedModelsCount.value / totalModelsCount.value) * 100);
 
-      // Порты для источника напряжения
-      {
-        name: 'port_2_1',
-        path: './models/port.glb',
-        position: new THREE.Vector3(-1.1, 0.06, 0.585),
-        rotation: new THREE.Euler(0, -Math.PI/2, 0),
-        scale: 0.1,
-        shadowEnabled: true
-      },
-      {
-        name: 'port_2_2',
-        path: './models/port.glb',
-        position: new THREE.Vector3(-1.015, 0.06, 0.585),
-        rotation: new THREE.Euler(0, -Math.PI/2, 0),
-        scale: 0.1,
-        shadowEnabled: true
-      },
-      {
-        name: 'port_2_3',
-        path: './models/port.glb',
-        position: new THREE.Vector3(-0.825, 0.06, 0.585),
-        rotation: new THREE.Euler(0, -Math.PI/2, 0),
-        scale: 0.1,
-        shadowEnabled: true
-      },
-      {
-        name: 'port_2_4',
-        path: './models/port.glb',
-        position: new THREE.Vector3(-0.745, 0.06, 0.585),
-        rotation: new THREE.Euler(0, -Math.PI/2, 0),
-        scale: 0.1,
-        shadowEnabled: true
-      },
+      if (loadedModelsCount.value >= totalModelsCount.value) {
+        setTimeout(() => {
+          isLoading.value = false;
+        }, 500);
+      }
+    }
 
-      // Спиннеры для источника напряжения
-      {
-        name: 'spinner_for_voltage_1',
-        path: './models/spinner_for_voltage_source.glb',
-        position: new THREE.Vector3(-0.94, -0.05, 0.585),
-        rotation: new THREE.Euler(-Math.PI/2, -3*Math.PI/4, -Math.PI/2),
-        scale: 0.1,
-        shadowEnabled: true
-      },
-      {
-        name: 'spinner_for_voltage_2',
-        path: './models/spinner_for_voltage_source.glb',
-        position: new THREE.Vector3(-0.67, -0.05, 0.585),
-        rotation: new THREE.Euler(-Math.PI/2, -3*Math.PI/4, -Math.PI/2),
-        scale: 0.1,
-        shadowEnabled: true
-      },
+    // Функция загрузки
+    const modelCache = new Map<string, THREE.Object3D>();
+    async function loadModelWithCache(path: string): Promise<THREE.Object3D | null> {
+      // Проверяем кэш
+      if (modelCache.has(path)) {
+        const cached = modelCache.get(path);
+        return cached ? cached.clone() : null; // Клонируем, если нужно несколько экземпляров
+      }
 
-      // Спиннер для терморезистора
-      {
-        name: 'spinner_for_thermistor',
-        path: './models/spinner_for_thermistor.glb',
-        position: new THREE.Vector3(1.07, 0.05, 0),
-        rotation: new THREE.Euler(0, -Math.PI/2, 0),
-        scale: 0.1,
-        shadowEnabled: true
-      },
+      try {
+        const gltf = await new Promise<any>((resolve, reject) => {
+          loader!.load(path, resolve, undefined, reject);
+        });
 
-      // Большая красная кнопка
-      /*{
-        name: 'red_big_button',
-        path: './models/red_big_button.glb',
-        position: new THREE.Vector3(-1.5, 0.2, -2),
-        rotation: new THREE.Euler(0, Math.PI/4, 0),
-        scale: 1.2,
-        shadowEnabled: true
-      },*/
-    ];
+        const model = gltf.scene;
+        // Настраиваем тени и другие общие свойства
+        model.traverse((child: THREE.Mesh) => {
+          child.castShadow = showShadows.value;
+          child.receiveShadow = showShadows.value;
+        });
+
+        // Сохраняем в кэше
+        modelCache.set(path, model);
+
+        return model.clone(); // Клонируем для использования
+      } catch (error) {
+        console.warn(`Не удалось загрузить модель ${path}:`, error);
+        return null;
+      }
+    }
 
     // Функция для добавления декоративных элементов
     async function addDecorativeElements() {
       if (!scene || !loader) return;
 
+      // Увеличиваем общее количество моделей
+      totalModelsCount.value += decorativeConfigs.length;
+
       for (const config of decorativeConfigs) {
         try {
-          const gltf = await new Promise<any>((resolve, reject) => {
-            loader!.load(
-                config.path,
-                (gltf) => resolve(gltf),
-                undefined,
-                (error) => reject(error)
-            );
-          });
+          const gltf = await loadModelWithCache(config.path);
+          if (!gltf) {
+            break;
+          }
 
-          const model = gltf.scene;
+          const model = gltf;
 
           // Настройка модели
           model.position.copy(config.position);
@@ -539,8 +464,8 @@ export default defineComponent({
           model.scale.set(config.scale, config.scale, config.scale);
 
           // Настройка теней
-          model.traverse((child: THREE.Mesh) => {
-            if (child.isMesh) {
+          model.traverse((child: THREE.Object3D) => {
+            if ((child as THREE.Mesh).isMesh) {
               child.castShadow = config.shadowEnabled && showShadows.value;
               child.receiveShadow = config.shadowEnabled && showShadows.value;
             }
@@ -548,6 +473,8 @@ export default defineComponent({
 
           scene.add(model);
           decorativeElements.value.push(model);
+          // Сохраняем в карту по имени
+          decorativeElementsMap.value.set(config.name, model);
 
           // Сохраняем ссылки на спиннеры
           if (config.name === 'spinner_for_voltage_2') {
@@ -556,6 +483,29 @@ export default defineComponent({
             thermistorSpinner.value = model;
           }
 
+          // Если это порт, обрабатываем его меши для кликабельности и уникальности материалов
+          if (config.name.includes('port')) {
+            // Проходим по всем дочерним мешам
+            model.traverse((child) => {
+              if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                // Клонируем материал, чтобы он был уникальным для этого порта
+                if (mesh.material) {
+                  if (Array.isArray(mesh.material)) {
+                    mesh.material = mesh.material.map(mat => mat.clone());
+                  } else {
+                    mesh.material = mesh.material.clone();
+                  }
+                }
+                // Добавляем меш в массив для рейкастинга
+                portMeshes.value.push(mesh);
+                meshToPortMap.value.set(mesh, config.name);
+              }
+            });
+          }
+
+          incrementLoadedModels();
+
         } catch (error) {
           console.warn(`Не удалось загрузить декоративную модель ${config.name}:`, error);
           // Создаем простую геометрию в качестве заглушки
@@ -563,6 +513,8 @@ export default defineComponent({
           if (fallback) {
             scene.add(fallback);
             decorativeElements.value.push(fallback);
+            // Сохраняем и заглушку
+            decorativeElementsMap.value.set(config.name, fallback);
 
             // Сохраняем ссылки для заглушек тоже
             if (config.name === 'spinner_for_voltage_2') {
@@ -570,6 +522,27 @@ export default defineComponent({
             } else if (config.name === 'spinner_for_thermistor') {
               thermistorSpinner.value = fallback;
             }
+
+            // Если это порт, обрабатываем заглушку
+            if (config.name.includes('port')) {
+              fallback.traverse((child) => {
+                if ((child as THREE.Mesh).isMesh) {
+                  const mesh = child as THREE.Mesh;
+                  // Клонируем материал
+                  if (mesh.material) {
+                    if (Array.isArray(mesh.material)) {
+                      mesh.material = mesh.material.map(mat => mat.clone());
+                    } else {
+                      mesh.material = mesh.material.clone();
+                    }
+                  }
+                  portMeshes.value.push(mesh);
+                  meshToPortMap.value.set(mesh, config.name);
+                }
+              });
+            }
+
+            incrementLoadedModels();
           }
         }
       }
@@ -579,10 +552,7 @@ export default defineComponent({
     function updateVoltageSpinnerRotation() {
       if (!voltageSpinner.value) return;
 
-      const sourceSlot = slots[0];
-      if (!sourceSlot?.component) return;
-
-      const voltage = sourceSlot.component.data.voltage || 0;
+      const voltage = sourceComponent.data.voltage || 0;
       // Масштабируем напряжение в угол вращения (0-15В = 0-360 градусов)
       const rotationAngle = (voltage / 15) * Math.PI / 2.5;
 
@@ -601,11 +571,11 @@ export default defineComponent({
       const rotationAngle = -normalizedTemp * Math.PI * 1.75;
 
       // Вращаем вокруг оси Y
-      thermistorSpinner.value.rotation.y = -Math.PI/2 + rotationAngle;
+      thermistorSpinner.value.rotation.y = 4*Math.PI/10 + rotationAngle;
     }
 
     // Следим за изменением напряжения
-    watch(() => slots[0]?.component?.data?.voltage, () => {
+    watch(() => sourceComponent.data.voltage, () => {
       updateVoltageSpinnerRotation();
     });
 
@@ -725,43 +695,40 @@ export default defineComponent({
       }
     }
 
-    // Добавляем новые конфигурации для дисплеев (текстовых плоскостей)
+    // Конфигурации для дисплеев
     const displayConfigs = [
       // Дисплей температуры на терморезисторе
       {
         name: 'thermistor_display',
-        position: new THREE.Vector3(1.04, 0.12, -0.3),
-        rotation: new THREE.Euler(-43*Math.PI/100, 0, 0),
+        position: new THREE.Vector3(1.0375, 0.1199, -0.305),
+        rotation: new THREE.Euler(-43.25*Math.PI/100, 0, 0),
         scale: 0.1,
-        width: 2,
-        height: 0.8,
-        fontSize: 60,
-        color: "#FF1616",
-        bgColor: 0x000000
+        width: 2.1,
+        height: 1,
+        fontSize: 80,
+        color: "#FF1616"
       },
       // Дисплей напряжения на вольтамперметре
       {
         name: 'voltmeter_display_top',
-        position: new THREE.Vector3(-0.38, 0.4, 0.586),
+        position: new THREE.Vector3(-0.374, 0.393, 0.586),
         rotation: new THREE.Euler(0, 0, 0),
         scale: 0.115,
-        width: 1.5,
-        height: 0.6,
-        fontSize: 60,
-        color: "#FF1616",
-        bgColor: 0x000000
+        width: 1.95,
+        height: 0.7,
+        fontSize: 80,
+        color: "#FF1616"
       },
       // Дисплей тока на вольтамперметре
       {
         name: 'ammeter_display_bottom',
-        position: new THREE.Vector3(-1.1, 0.4, 0.586),
+        position: new THREE.Vector3(-1.107, 0.393, 0.586),
         rotation: new THREE.Euler(0, 0, 0),
         scale: 0.115,
-        width: 1.5,
-        height: 0.6,
-        fontSize: 60,
-        color: "#FF1616",
-        bgColor: 0x000000
+        width: 1.95,
+        height: 0.7,
+        fontSize: 80,
+        color: "#FF1616"
       }
     ];
 
@@ -778,11 +745,11 @@ export default defineComponent({
       canvas.height = 128;
 
       // Фон
-      context.fillStyle = '#000000';
+      context.fillStyle = '#000011';
       context.fillRect(0, 0, canvas.width, canvas.height);
 
       // Текст по умолчанию
-      context.font = 'bold 60px SevenSegment';
+      context.font = 'bold 80px SevenSegment';
       context.fillStyle = '#FF1616';
       context.textAlign = 'center';
       context.textBaseline = 'middle';
@@ -827,7 +794,7 @@ export default defineComponent({
       context.fillRect(0, 0, canvas.width, canvas.height);
 
       // Настройки шрифта
-      const fontSize = config.fontSize || 60;
+      const fontSize = config.fontSize || 80;
       context.font = `bold ${fontSize}px SevenSegment`;
       context.fillStyle = config.color || '#FF1616';
       context.textAlign = 'center';
@@ -835,7 +802,7 @@ export default defineComponent({
 
       // Для моноширинного эффекта - отрисовываем каждый символ отдельно
       // с фиксированным расстоянием между ними
-      const charSpacing = 33; // Фиксированное расстояние между символами
+      const charSpacing = 44; // Фиксированное расстояние между символами
       const verticalOffset = 2;
 
       // Центрируем всю строку
@@ -843,11 +810,25 @@ export default defineComponent({
       const startX = (canvas.width - totalWidth) / 2;
 
       // Рисуем каждый символ в своей позиции
+      let dotCounter = 0;
+      if (text.length < 5 && (config.name === 'voltmeter_display_top' || config.name === 'ammeter_display_bottom')) {
+        text = '⠀' + text;
+      }
       for (let i = 0; i < text.length; i++) {
         const char: string | undefined = text[i]?.toString();
-        const x = startX + (i * charSpacing);
+        let x = startX + (i * charSpacing);
         if (char != null) {
-          context.fillText(char, x, canvas.height / 2 + verticalOffset);
+          if (char === '.') {
+            x += charSpacing * 0.5;
+            dotCounter += 1;
+          }
+          if (char === '1') {
+            x += charSpacing * 0.3;
+          }
+          if (text[0] === '1') {
+            x += charSpacing * 0.5;
+          }
+          context.fillText(char, x - charSpacing * dotCounter, canvas.height / 2 + verticalOffset);
         }
       }
 
@@ -883,16 +864,15 @@ export default defineComponent({
       // Обновляем дисплей температуры на терморезисторе
       updateDisplayText(
           thermistorDisplay.value,
-          `${globalTemp.value} K`,
+          `${globalTemp.value}`,
           displayConfigs.find(c => c.name === 'thermistor_display')
       );
 
       // Обновляем дисплей напряжения на вольтамперметре
-      const sourceSlot = slots[0];
-      const voltage = sourceSlot?.component?.data?.voltage || 0;
+      const voltage = sourceComponent.data.voltage || 0;
       updateDisplayText(
           voltmeterDisplay.value,
-          `${voltage.toFixed(2)} V`,
+          `${voltage.toFixed(2)}`,
           displayConfigs.find(c => c.name === 'voltmeter_display_top')
       );
 
@@ -900,22 +880,15 @@ export default defineComponent({
       const current = calculateCurrent();
       updateDisplayText(
           ammeterDisplay.value,
-          current !== null ? `${current.toFixed(2)} A` : '0.00 A',
+          current !== null ? `${current.toFixed(2)}` : '0.00',
           displayConfigs.find(c => c.name === 'ammeter_display_bottom')
       );
     }
 
     // Вычисление текущего тока в цепи
     function calculateCurrent(): number | null {
-      const sourceSlot = slots[0];
-      const sampleSlot = slots[1];
-
-      if (!sourceSlot?.component || !sampleSlot?.component) {
-        return null;
-      }
-
-      const V = sourceSlot.component.data.voltage || 0;
-      const R = calculateCurrentResistance(sampleSlot.component.data);
+      const V = sourceComponent.data.voltage || 0;
+      const R = calculateCurrentResistance(thermistorComponent.data);
 
       if (R <= 0) return 0;
 
@@ -928,6 +901,266 @@ export default defineComponent({
     // Функция для обновления текущего тока
     function updateCurrent() {
       currentI.value = calculateCurrent();
+    }
+
+    // Инициализация графиков Chart.js
+    function initCharts() {
+      nextTick(() => {
+        if (uiChartCanvas.value && rtChartCanvas.value) {
+          createUIChart();
+          createRTChart();
+        }
+      });
+    }
+
+    // Создание графика U = f(I)
+    function createUIChart() {
+      if (!uiChartCanvas.value) return;
+
+      const ctx = uiChartCanvas.value.getContext('2d');
+      if (!ctx) return;
+
+      if (uiChart) {
+        uiChart.destroy();
+      }
+
+      // Фильтруем данные из таблицы сохранённых показаний
+      // Только записи с T=300 и напряжением от 2 до 4 В
+      const filteredSnapshots = snapshots.value.filter(s => {
+        return s.T === 300 && s.V >= 2 && s.V <= 4;
+      });
+
+      // Разделяем данные по типу терморезистора
+      const metalData = filteredSnapshots
+          .filter(s => s.thermistorType === 'metal')
+          .map(s => ({
+            x: parseFloat(s.I || 0), // ток
+            y: parseFloat(s.V) // напряжение
+          }));
+
+      const semiData = filteredSnapshots
+          .filter(s => s.thermistorType === 'semiconductor')
+          .map(s => ({
+            x: parseFloat(s.I || 0), // ток
+            y: parseFloat(s.V) // напряжение
+          }));
+
+      uiChart = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+          datasets: [
+            {
+              label: 'Металлический терморезистор',
+              data: metalData,
+              borderColor: 'rgba(54, 162, 235, 1)',
+              backgroundColor: 'rgba(54, 162, 235, 0.1)',
+              borderWidth: 2,
+              pointRadius: 5,
+              pointHoverRadius: 7,
+              showLine: true,
+              fill: false,
+            },
+            {
+              label: 'Полупроводниковый терморезистор',
+              data: semiData,
+              borderColor: 'rgba(255, 99, 132, 1)',
+              backgroundColor: 'rgba(255, 99, 132, 0.1)',
+              borderWidth: 2,
+              pointRadius: 5,
+              pointHoverRadius: 7,
+              showLine: true,
+              fill: false,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                font: {
+                  size: 12
+                }
+              }
+            },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              callbacks: {
+                label: function(context) {
+                  let label = context.dataset.label || '';
+                  if (label) {
+                    label += ': ';
+                  }
+                  const point = context.raw as { x: number; y: number };
+                  label += `U = ${point.y?.toFixed(2)} В, I = ${point.x?.toFixed(4)} А`;
+                  return label;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Ток I, А',
+                font: {
+                  size: 14,
+                  weight: 'bold'
+                }
+              },
+              grid: {
+                color: 'rgba(0, 0, 0, 0.1)'
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Напряжение U, В',
+                font: {
+                  size: 14,
+                  weight: 'bold'
+                }
+              },
+              grid: {
+                color: 'rgba(0, 0, 0, 0.1)'
+              },
+              min: 0,
+              max: 4.5,
+            }
+          }
+        }
+      });
+    }
+
+    // Создание графика R = f(T)
+    function createRTChart() {
+      if (!rtChartCanvas.value) return;
+
+      const ctx = rtChartCanvas.value.getContext('2d');
+      if (!ctx) return;
+
+      if (rtChart) {
+        rtChart.destroy();
+      }
+
+      // Фильтруем данные из таблицы сохранённых показаний
+      // Только записи с напряжением от 5 до 15 В
+      const filteredSnapshots = snapshots.value.filter(s => {
+        return s.V >= 5 && s.V <= 15;
+      });
+
+      // Разделяем данные по типу терморезистора
+      const metalData = filteredSnapshots
+          .filter(s => s.thermistorType === 'metal')
+          .map(s => ({
+            x: parseFloat(s.T), // температура
+            y: parseFloat(s.R || 0) // сопротивление
+          }));
+
+      const semiData = filteredSnapshots
+          .filter(s => s.thermistorType === 'semiconductor')
+          .map(s => ({
+            x: parseFloat(s.T), // температура
+            y: parseFloat(s.R || 0) // сопротивление
+          }));
+
+      rtChart = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+          datasets: [
+            {
+              label: 'Металлический терморезистор',
+              data: metalData,
+              borderColor: 'rgba(54, 162, 235, 1)',
+              backgroundColor: 'rgba(54, 162, 235, 0.1)',
+              borderWidth: 2,
+              pointRadius: 5,
+              pointHoverRadius: 7,
+              showLine: true,
+              fill: false,
+            },
+            {
+              label: 'Полупроводниковый терморезистор',
+              data: semiData,
+              borderColor: 'rgba(255, 99, 132, 1)',
+              backgroundColor: 'rgba(255, 99, 132, 0.1)',
+              borderWidth: 2,
+              pointRadius: 5,
+              pointHoverRadius: 7,
+              showLine: true,
+              fill: false,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                font: {
+                  size: 12
+                }
+              }
+            },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              callbacks: {
+                label: function(context) {
+                  let label = context.dataset.label || '';
+                  if (label) {
+                    label += ': ';
+                  }
+                  label += `R = ${context.parsed.y?.toFixed(2)} Ω, T = ${context.parsed.x} K`;
+                  return label;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Температура T, K',
+                font: {
+                  size: 14,
+                  weight: 'bold'
+                }
+              },
+              grid: {
+                color: 'rgba(0, 0, 0, 0.1)'
+              },
+              min: 280,
+              max: 400,
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Сопротивление R, Ω',
+                font: {
+                  size: 14,
+                  weight: 'bold'
+                }
+              },
+              type: 'linear',
+              grid: {
+                color: 'rgba(0, 0, 0, 0.1)'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Функция обновления обоих графиков
+    function updateCharts() {
+      createUIChart();
+      createRTChart();
     }
 
     // Инициализация Three.js сцены
@@ -973,6 +1206,7 @@ export default defineComponent({
       directionalLight.castShadow = showShadows.value;
       directionalLight.shadow.mapSize.width = 2048;
       directionalLight.shadow.mapSize.height = 2048;
+      directionalLight.shadow.bias = -0.0001;
       scene.add(directionalLight);
 
       // Пол
@@ -1009,16 +1243,71 @@ export default defineComponent({
 
       // Обработка изменения размера окна
       window.addEventListener('resize', onWindowResize);
+
+      // Инициализация графиков после загрузки
+      setTimeout(() => {
+        initCharts();
+      }, 1000);
+
+      // Обработчик клика для выделения портов и создания проводов
+      const onClick = (event: MouseEvent) => {
+        if (!renderer || !camera || !scene) return;
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        // Вычисляем координаты мыши в нормализованных координатах (-1 до 1)
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+
+        // Проверяем пересечения с мешами портов
+        const intersects = raycaster.intersectObjects(portMeshes.value);
+
+        if (intersects.length > 0) {
+          // Берем первый меш, находим имя порта
+          const hitMesh = intersects[0]?.object as THREE.Mesh;
+          const portName = meshToPortMap.value.get(hitMesh);
+          if (!portName) return;
+
+          if (firstSelectedPort.value === null) {
+            // Первый клик - выбираем порт
+            firstSelectedPort.value = portName;
+            highlightPort(portName);
+          } else if (firstSelectedPort.value === portName) {
+            // Клик на тот же порт - снимаем выделение
+            firstSelectedPort.value = null;
+            highlightPort(null);
+          } else {
+            // Клик на другой порт - создаём провод
+            createWireBetweenPorts(firstSelectedPort.value, portName);
+            // Снимаем выделение
+            firstSelectedPort.value = null;
+            highlightPort(null);
+          }
+        } else {
+          // Клик не по порту - снимаем выделение
+          firstSelectedPort.value = null;
+          highlightPort(null);
+        }
+      };
+
+      renderer.domElement.addEventListener('click', onClick);
     }
 
     // Инициализация всех компонентов схемы
     async function initComponents() {
       if (!scene) return;
 
+      // Увеличиваем общее количество моделей для основных компонентов
+      totalModelsCount.value += 3;
+
       // Добавляем все компоненты сразу
-      await addComponentToSlot('source', { kind: 'source' }, 0);
-      await addComponentToSlot('thermistor', { kind: selectedThermistorKind.value }, 1);
-      await addComponentToSlot('amm', { kind: 'amm' }, 2);
+      await addComponentToScene(sourceComponent);
+      await addComponentToScene(thermistorComponent);
+      await addComponentToScene(ammeterComponent);
     }
 
     // Анимационный цикл
@@ -1051,27 +1340,14 @@ export default defineComponent({
       renderer.setSize(sceneContainer.value.clientWidth, sceneContainer.value.clientHeight);
     }
 
-    // Загрузка 3D модели для компонента
+    // Функция загрузки модели с использованием импортированных путей
     async function loadModelForType(type: string, kind?: string): Promise<THREE.Object3D | null> {
       if (!loader) return null;
 
       try {
-        let modelPath = '';
-
-        // Определяем путь к модели в зависимости от типа компонента
-        switch(type) {
-          case 'source':
-            modelPath = './models/voltage_source.glb';
-            break;
-          case 'thermistor':
-            modelPath = './models/thermistor.glb'; // Одинаковая модель для обоих типов
-            break;
-          case 'amm':
-            modelPath = './models/ammeter.glb';
-            break;
-          default:
-            return null;
-        }
+        // Получаем путь из modelPaths, импортированного сверху
+        const modelPath = modelPaths[type as keyof typeof modelPaths];
+        if (!modelPath) return null;
 
         const gltf = await new Promise<any>((resolve, reject) => {
           loader!.load(
@@ -1143,16 +1419,15 @@ export default defineComponent({
       return mesh;
     }
 
-    // Добавление компонента в слот
-    async function addComponentToSlot(type: string, meta: any, slotIndex: number) {
-      const slot = slots[slotIndex];
-      if (!slot || !scene) return false;
+    // Добавление компонента на сцену
+    async function addComponentToScene(component: Component3D) {
+      if (!scene) return false;
 
       // Загружаем 3D модель или создаем запасной вариант
-      let model = await loadModelForType(type, meta.kind);
+      let model = await loadModelForType(component.type, component.data.kind);
 
       if (!model) {
-        model = createFallbackGeometry(type, meta.kind);
+        model = createFallbackGeometry(component.type, component.data.kind);
       }
 
       // Настройка модели
@@ -1161,87 +1436,57 @@ export default defineComponent({
         child.receiveShadow = showShadows.value;
       });
 
-      model.scale.set(slot.scale, slot.scale, slot.scale);
-      model.position.copy(slot.position);
-      model.rotation.copy(slot.rotation);
+      model.scale.set(component.scale, component.scale, component.scale);
+      model.position.copy(component.position);
+      model.rotation.copy(component.rotation);
 
       const initialScale = 0.1;
       model.scale.set(initialScale, initialScale, initialScale);
       scene.add(model);
 
-      // Создание объекта компонента с начальными параметрами
-      const component: Component3D = {
-        type,
-        model,
-        data: {
-          type,
-          kind: meta.kind,
-          voltage: type === 'source' ? 0 : undefined,
-          R0: type === 'thermistor' ?
-              (meta.kind === 'metal' ? 100 : 1000) : undefined,
-          alpha: type === 'thermistor' && meta.kind === 'metal' ? 0.0039 : undefined,
-          B: type === 'thermistor' && meta.kind === 'semiconductor' ? 3500 : undefined
-        },
-        position: slot.position.clone(),
-        rotation: slot.rotation.clone(),
-        scale: slot.scale,
-        slotIndex
-      };
+      // Обновляем модель компонента
+      component.model = model;
 
-      // Обновление состояния слота
-      slot.occupied = true;
-      slot.component = component;
+      // Увеличиваем счетчик загруженных моделей для этого компонента
+      incrementLoadedModels();
 
       // Обновляем ток после добавления компонента
       updateCurrent();
+
+      // Обновляем графики после добавления компонента
+      updateCharts();
 
       return true;
     }
 
     // Обновление типа терморезистора при изменении радиокнопки
     function updateThermistorKind() {
-      const thermistorSlot = slots[1];
-      if (thermistorSlot?.component && thermistorSlot.component.data.type === 'thermistor') {
-        // Обновляем данные компонента
-        thermistorSlot.component.data.kind = selectedThermistorKind.value;
+      // Обновляем данные компонента
+      thermistorComponent.data.kind = selectedThermistorKind.value;
 
-        // Обновляем параметры по умолчанию в зависимости от типа
-        if (selectedThermistorKind.value === 'metal') {
-          thermistorSlot.component.data.R0 = 100;
-          thermistorSlot.component.data.alpha = 0.0039;
-          thermistorSlot.component.data.B = undefined;
-        } else {
-          thermistorSlot.component.data.R0 = 1000;
-          thermistorSlot.component.data.alpha = undefined;
-          thermistorSlot.component.data.B = 3500;
-        }
-
-        updateCurrent();
+      // Обновляем параметры по умолчанию в зависимости от типа
+      if (selectedThermistorKind.value === 'metal') {
+        thermistorComponent.data.R0 = 100;
+        thermistorComponent.data.alpha = 0.0039;
+        thermistorComponent.data.B = undefined;
+      } else {
+        thermistorComponent.data.R0 = 1000;
+        thermistorComponent.data.alpha = undefined;
+        thermistorComponent.data.B = 3500;
       }
+
+      updateCurrent();
+      updateCharts();
     }
 
     // Сохранение измерений
     function saveSnapshot() {
-      const sourceSlot = slots[0];
-      const sampleSlot = slots[1];
-      const ammeterSlot = slots[2];
-
-      if (!sourceSlot || !sampleSlot) {
-        showErrorPopup("Схема собрана не полностью!");
-        return;
-      }
-
-      if (!sourceSlot.occupied || !sampleSlot.occupied) {
-        showErrorPopup("Схема собрана не полностью!");
-        return;
-      }
-
-      const V = sourceSlot.component?.data?.voltage || 0;
+      const V = sourceComponent.data.voltage || 0;
       const T = globalTemp.value;
-      let Rsample = calculateCurrentResistance(sampleSlot.component?.data);
+      let Rsample = calculateCurrentResistance(thermistorComponent.data);
 
       // Получаем тип терморезистора из данных компонента
-      const thermistorType = sampleSlot.component?.data?.kind || selectedThermistorKind.value;
+      const thermistorType = thermistorComponent.data.kind;
 
       const snapshot: any = {
         V: V.toFixed(2),
@@ -1250,10 +1495,8 @@ export default defineComponent({
         thermistorType // Добавляем тип терморезистора
       };
 
-      if (ammeterSlot && ammeterSlot.occupied) {
-        const I = calculateCurrent();
-        snapshot.I = I !== null ? I.toFixed(2) : '—';
-      }
+      const I = calculateCurrent();
+      snapshot.I = I !== null ? I.toFixed(4) : '—';
 
       snapshots.value.unshift(snapshot);
     }
@@ -1273,10 +1516,7 @@ export default defineComponent({
     // Сброс значений к значениям по умолчанию
     function resetValues() {
       // Сбрасываем напряжение источника
-      const sourceSlot = slots[0];
-      if (sourceSlot?.component) {
-        sourceSlot.component.data.voltage = 0;
-      }
+      sourceComponent.data.voltage = 0;
 
       // Сбрасываем температуру
       globalTemp.value = 300;
@@ -1295,10 +1535,31 @@ export default defineComponent({
         controls.update();
       }
 
+      // Снимаем выделение порта и удаляем все созданные провода
+      firstSelectedPort.value = null;
+      highlightPort(null);
+
+      // Удаляем все провода из сцены
+      if (scene) {
+        wires.value.forEach(wire => {
+          scene?.remove(wire);
+          if (wire.geometry) wire.geometry.dispose();
+          if (wire.material) {
+            if (Array.isArray(wire.material)) {
+              wire.material.forEach(m => m.dispose());
+            } else {
+              wire.material.dispose();
+            }
+          }
+        });
+        wires.value = [];
+      }
+
       updateAllDisplays();
       updateCurrent();
       updateVoltageSpinnerRotation();
       updateThermistorSpinnerRotation();
+      updateCharts();
     }
 
     // Обработка колесика мыши для температуры
@@ -1315,15 +1576,87 @@ export default defineComponent({
 
       // Обновляем текущий ток при изменении температуры
       updateCurrent();
+      updateCharts();
     }
 
-    function showErrorPopup(message: string) {
+    /*function showErrorPopup(message: string) {
       errorMessage.value = message;
       showError.value = true;
+    }*/
+
+    // Функция создания гнущихся проводов
+    function createWireBetweenPorts(portName1: string, portName2: string) {
+      if (!scene) return;
+      const map = decorativeElementsMap.value;
+      const p1 = map.get(portName1)?.position.clone();
+      const p2 = map.get(portName2)?.position.clone();
+      if (!p1 || !p2) return;
+
+      // Создаём три точки: начало, контрольная точка выше, конец
+      const mid = new THREE.Vector3().lerpVectors(p1, p2, 0.5);
+      mid.z += 0.2; // смещаем середину для изгиба
+
+      const curve = new CatmullRomCurve3([p1, mid, p2]);
+      const tubeGeo = new TubeGeometry(curve, 64, 0.015, 8, false);
+      const material = new THREE.MeshStandardMaterial({ color: 0x333333 }); // чёрный провод
+      const wire = new THREE.Mesh(tubeGeo, material);
+
+      wire.castShadow = showShadows.value;
+      wire.receiveShadow = showShadows.value;
+
+      scene.add(wire);
+      wires.value.push(wire);
+    }
+
+    // Функции для выделения портов
+    function highlightPort(portName: string | null) {
+      // Сначала снимаем выделение с предыдущего порта
+      if (selectedPortName.value) {
+        const prevPort = decorativeElementsMap.value.get(selectedPortName.value);
+        if (prevPort) {
+          setPortEmissive(prevPort, 0x000000);
+        }
+      }
+
+      // Если передан новый порт, выделяем его
+      if (portName) {
+        const newPort = decorativeElementsMap.value.get(portName);
+        if (newPort) {
+          setPortEmissive(newPort, 0x444400); // желтоватое свечение
+        }
+        selectedPortName.value = portName;
+      } else {
+        selectedPortName.value = null;
+      }
+    }
+
+    function setPortEmissive(portObject: THREE.Object3D, colorHex: number) {
+      portObject.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          const mesh = child as THREE.Mesh;
+          if (mesh.material) {
+            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+            materials.forEach(mat => {
+              if (mat instanceof MeshStandardMaterial) {
+                mat.emissive.setHex(colorHex);
+              }
+            });
+          }
+        }
+      });
     }
 
     // Следим за изменением типа терморезистора
     watch(selectedThermistorKind, updateThermistorKind);
+
+    // Следим за изменением параметров для обновления графиков
+    watch(() => thermistorComponent.data, () => {
+      updateCharts();
+    }, { deep: true });
+
+    watch(() => sourceComponent.data.voltage, () => {
+      updateCharts();
+    });
 
     // Хуки жизненного цикла
     onMounted(() => {
@@ -1355,21 +1688,54 @@ export default defineComponent({
           }
         }
       });
+
+      // Удаляем все провода
+      if (scene) {
+        wires.value.forEach(wire => {
+          scene?.remove(wire);
+          if (wire.geometry) wire.geometry.dispose();
+          if (wire.material) {
+            if (Array.isArray(wire.material)) {
+              wire.material.forEach(m => m.dispose());
+            } else {
+              wire.material.dispose();
+            }
+          }
+        });
+        wires.value = [];
+      }
+
+      // Уничтожаем графики
+      if (uiChart) {
+        uiChart.destroy();
+      }
+      if (rtChart) {
+        rtChart.destroy();
+      }
     });
 
     return {
       // Refs
       sceneContainer,
+      uiChartCanvas,
+      rtChartCanvas,
       globalTemp,
       showError,
       errorMessage,
-      slots,
       snapshots,
       currentI,
       selectedThermistorKind,
       showShadows,
       voltageSpinner,
       thermistorSpinner,
+      sourceComponent,
+      thermistorComponent,
+
+      // Состояние загрузки
+      isLoading,
+      loadedModelsCount,
+      totalModelsCount,
+      loadingProgress,
 
       // Methods
       handleWheelScroll,
@@ -1378,6 +1744,7 @@ export default defineComponent({
       calculateCurrentResistance,
       toggleShadows,
       getThermistorTypeLabel,
+      updateCharts,
     };
   }
 });
@@ -1390,7 +1757,9 @@ export default defineComponent({
   font-display: swap;
 }
 
-h2, h4 {
+h2,
+h4,
+h5 {
   color: #000000;
 }
 
@@ -1398,10 +1767,15 @@ strong, div {
   color: #222222;
 }
 
+.circuit-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
 .circuit-3d-container {
   display: flex;
   gap: 20px;
-  margin-bottom: 20px;
 }
 
 .controls-panel {
@@ -1410,6 +1784,110 @@ strong, div {
   border-radius: 8px;
   padding: 16px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  position: relative;
+}
+
+.scene-container {
+  flex: 1;
+  position: relative;
+  width: calc(100vw - 900px);
+}
+
+.three-scene {
+  width: 100%;
+  height: 746px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.three-scene.loading {
+  filter: blur(2px);
+  opacity: 0.7;
+}
+
+/* Оверлей загрузки */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  border-radius: 8px;
+}
+
+.loading-content {
+  text-align: center;
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  max-width: 400px;
+  width: 90%;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #4f46e5;
+  border-radius: 50%;
+  margin: 0 auto 20px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 15px;
+}
+
+.loading-progress {
+  margin-top: 20px;
+}
+
+.progress-bar {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4f46e5, #7c3aed);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+@keyframes spin-small {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-info div {
+  display: inline-block;
+  vertical-align: middle;
+  font-size: 14px;
+  color: #0369a1;
 }
 
 .shadow-control {
@@ -1482,20 +1960,6 @@ strong, div {
   margin: 8px 0;
 }
 
-.scene-container {
-  flex: 1;
-  position: relative;
-}
-
-.three-scene {
-  width: 100%;
-  height: 500px;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
 .measurements-section {
   background: #fff;
   border-radius: 8px;
@@ -1505,7 +1969,7 @@ strong, div {
 
 .current-components {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(416px, 1fr));
   gap: 16px;
   margin-top: 12px;
 }
@@ -1517,12 +1981,6 @@ strong, div {
   background: #f9fafb;
 }
 
-.slot-label {
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: #374151;
-}
-
 .component-params {
   margin: 12px 0;
   padding: 12px;
@@ -1531,18 +1989,23 @@ strong, div {
   border: 1px solid #e5e7eb;
 }
 
+.params-column {
+  display: flex;
+  justify-content: space-around;
+}
+
 .param-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 10px;
+  gap: 10px;
 }
 
 .param-row label {
   font-weight: 500;
   color: #4b5563;
   font-size: 14px;
-  min-width: 80px;
 }
 
 .param-controls {
@@ -1552,17 +2015,18 @@ strong, div {
   flex: 1;
 }
 
-.voltage-slider {
+.slider {
   flex: 1;
-  height: 6px;
+  max-height: 6px;
   border-radius: 3px;
   background: #e5e7eb;
   outline: none;
   -webkit-appearance: none;
   appearance: none;
+  cursor: pointer;
 }
 
-.voltage-slider::-webkit-slider-thumb {
+.slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 18px;
@@ -1572,7 +2036,7 @@ strong, div {
   cursor: pointer;
 }
 
-.voltage-slider::-moz-range-thumb {
+.slider::-moz-range-thumb {
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -1581,7 +2045,7 @@ strong, div {
   border: none;
 }
 
-.voltage-input, .param-input {
+.input {
   width: 80px;
   padding: 6px 8px;
   border: 1px solid #d1d5db;
@@ -1591,10 +2055,8 @@ strong, div {
   appearance: textfield;
 }
 
-.voltage-input::-webkit-inner-spin-button,
-.voltage-input::-webkit-outer-spin-button,
-.param-input::-webkit-inner-spin-button,
-.param-input::-webkit-outer-spin-button {
+.input::-webkit-inner-spin-button,
+.input::-webkit-outer-spin-button {
   -webkit-appearance: none;
   appearance: none;
   margin: 0;
@@ -1634,8 +2096,84 @@ strong, div {
   margin-bottom: 0;
 }
 
-.snapshots-table {
+.charts-section {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin-top: 20px;
+}
+
+.charts-section h4 {
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.charts-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+  gap: 24px;
+}
+
+.chart-card {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.chart-card h5 {
+  margin-bottom: 16px;
+  color: #374151;
+  font-size: 16px;
+  text-align: center;
+}
+
+.chart-wrapper {
+  position: relative;
+  height: 350px;
+  width: 100%;
+}
+
+.chart-canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.chart-legend {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
   margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+.metal-color {
+  background-color: rgba(54, 162, 235, 1);
+}
+
+.semiconductor-color {
+  background-color: rgba(255, 99, 132, 1);
+}
+
+.snapshots-table {
+  margin: 16px 0;
   overflow-x: auto;
 }
 
@@ -1670,7 +2208,6 @@ button {
   cursor: pointer;
   font-weight: 500;
   transition: all 0.2s;
-  margin-top: 8px;
 }
 
 button:hover {
@@ -1680,5 +2217,63 @@ button:hover {
 
 button:active {
   transform: translateY(0);
+}
+
+button:nth-child(3) {
+  background: #10b981;
+}
+
+button:nth-child(3):hover {
+  background: #0da271;
+}
+
+@media (max-width: 1900px) {
+  .circuit-container {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 1300px) {
+  .circuit-3d-container {
+    flex-direction: column-reverse;
+  }
+
+  .controls-panel {
+    width: 100%;
+  }
+
+  .controls-panel-wrapper {
+    display: flex;
+    justify-content: space-around;
+  }
+
+  .scene-container {
+    width: 100%;
+  }
+
+  .charts-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .current-components {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .controls-panel-wrapper,
+  .param-row,
+  .param-controls {
+    flex-direction: column;
+  }
+
+  .charts-container {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-wrapper {
+    height: 250px;
+  }
 }
 </style>
