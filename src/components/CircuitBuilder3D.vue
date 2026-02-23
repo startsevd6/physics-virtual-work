@@ -111,6 +111,7 @@
               <button @click="saveSnapshot">Сохранить показания</button>
               <button @click="resetValues">Сброс</button>
               <button @click="updateCharts">Обновить графики</button>
+              <button @click="checkCircuit">Проверить схему</button>
             </div>
           </div>
         </div>
@@ -310,6 +311,9 @@ export default defineComponent({
     // Для хранения созданных проводов и состояния выбора первого порта
     const wires = ref<THREE.Mesh[]>([]);
     const firstSelectedPort = ref<string | null>(null);
+
+    // Массив соединений (какие порты соединены)
+    const connections = ref<Array<{port1: string, port2: string}>>([]);
 
     // Функция для обновления прогресса загрузки
     function incrementLoadedModels() {
@@ -1467,6 +1471,9 @@ export default defineComponent({
         wires.value = [];
       }
 
+      // Очищаем список соединений
+      connections.value = [];
+
       updateAllDisplays();
       updateCurrent();
       updateVoltageSpinnerRotation();
@@ -1529,6 +1536,9 @@ export default defineComponent({
 
       scene.add(wire);
       wires.value.push(wire);
+
+      // Сохраняем соединение
+      connections.value.push({ port1: portName1, port2: portName2 });
     }
 
     // Функции для выделения портов
@@ -1567,6 +1577,29 @@ export default defineComponent({
           }
         }
       });
+    }
+
+    // Функция проверки схемы
+    function checkCircuit() {
+      const requiredPairs = [
+        ['port_1_1', 'port_thermistor_13'],
+        ['port_1_2', 'port_2_4'],
+        ['port_2_3', 'port_thermistor_17'],
+        ['port_thermistor_12', 'port_1_3'],
+        ['port_1_4', 'port_thermistor_14']
+      ];
+
+      const allPresent = requiredPairs.every(([a, b]) => {
+        return connections.value.some(conn =>
+            (conn.port1 === a && conn.port2 === b) || (conn.port1 === b && conn.port2 === a)
+        );
+      });
+
+      if (allPresent) {
+        alert('Схема собрана верно');
+      } else {
+        alert('Схема собрана неверно');
+      }
     }
 
     // Следим за изменением типа терморезистора
@@ -1628,6 +1661,9 @@ export default defineComponent({
         wires.value = [];
       }
 
+      // Очищаем соединения
+      connections.value = [];
+
       // Уничтожаем графики
       if (uiChart) {
         uiChart.destroy();
@@ -1668,6 +1704,7 @@ export default defineComponent({
       toggleShadows,
       getThermistorTypeLabel,
       updateCharts,
+      checkCircuit,
     };
   }
 });
