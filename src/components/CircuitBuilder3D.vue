@@ -66,7 +66,7 @@
               <strong>Источник напряжения</strong>
               <div class="component-params">
                 <div class="param-row">
-                  <label>Напряжение:</label>
+                  <label class="label-voltage">Напряжение:</label>
                   <div class="param-controls">
                     <input
                         type="range"
@@ -107,7 +107,7 @@
               </div>
             </div>
 
-            <div style="margin-top:8px;display:flex;gap:8px;align-items:stretch">
+            <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px;align-items:stretch">
               <button @click="saveSnapshot">Сохранить показания</button>
               <button @click="resetValues">Сброс</button>
               <button @click="updateCharts">Обновить графики</button>
@@ -554,13 +554,13 @@ export default defineComponent({
     }
 
     // Функция для переключения теней
-    function toggleShadows() {
+    /*function toggleShadows() {
       showShadows.value = !showShadows.value;
       updateShadows();
-    }
+    }*/
 
     // Функция для обновления теней во всех объектах сцены
-    function updateShadows() {
+    /*function updateShadows() {
       if (!scene || !renderer) return;
 
       // Обновляем настройки рендерера
@@ -591,7 +591,7 @@ export default defineComponent({
           }
         });
       }
-    }
+    }*/
 
     // Вычисление текущего сопротивления терморезистора
     function calculateCurrentResistance(componentData: any): number {
@@ -1700,8 +1700,8 @@ export default defineComponent({
       handleWheelScroll,
       saveSnapshot,
       resetValues,
-      calculateCurrentResistance,
-      toggleShadows,
+      //calculateCurrentResistance,
+      //toggleShadows,
       getThermistorTypeLabel,
       updateCharts,
       checkCircuit,
@@ -1774,16 +1774,18 @@ strong, div {
   border-radius: 8px;
   padding: 16px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+
+  overflow-y: auto;
 }
 
-.controls-panel {
+/*.controls-panel {
   width: 250px;
   background: #fff;
   border-radius: 8px;
   padding: 16px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   position: relative;
-}
+}*/
 
 .scene-section {
   flex: 1;
@@ -1888,12 +1890,12 @@ strong, div {
   color: #0369a1;
 }
 
-.shadow-control {
+/*.shadow-control {
   margin-bottom: 20px;
   padding: 12px;
   background: #f8fafc;
   border-radius: 6px;
-}
+}*/
 
 .shadow-control label {
   display: block;
@@ -1902,17 +1904,17 @@ strong, div {
   color: #374151;
 }
 
-.shadow-toggle-btn {
+/*.shadow-toggle-btn {
   width: 100%;
   margin-top: 0;
-}
+}*/
 
-.thermistor-type-selector {
+/*.thermistor-type-selector {
   margin-bottom: 20px;
   padding: 12px;
   background: #f8fafc;
   border-radius: 6px;
-}
+}*/
 
 .thermistor-type-selector label {
   display: block;
@@ -1921,11 +1923,11 @@ strong, div {
   color: #374151;
 }
 
-.radio-group {
+/*.radio-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
+}*/
 
 .radio-group label {
   display: flex;
@@ -1963,12 +1965,13 @@ strong, div {
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  overflow-y: auto;
 }
 
 .current-components {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(416px, 1fr));
-  gap: 16px;
+  /*grid-template-columns: repeat(auto-fit, minmax(416px, 1fr));
+  */gap: 16px;
   margin-top: 12px;
 }
 
@@ -1987,10 +1990,10 @@ strong, div {
   border: 1px solid #e5e7eb;
 }
 
-.params-column {
+/*.params-column {
   display: flex;
   justify-content: space-around;
-}
+}*/
 
 .param-row {
   display: flex;
@@ -2044,7 +2047,7 @@ strong, div {
 }
 
 .input {
-  width: 80px;
+  /*width: 80px;*/
   padding: 6px 8px;
   border: 1px solid #d1d5db;
   border-radius: 4px;
@@ -2241,31 +2244,45 @@ button:nth-child(3):hover {
   }
   */
 
-  .controls-panel {
+  /*.controls-panel {
     width: 100%;
-  }
+  }*/
 
-  .controls-panel-wrapper {
+  /*.controls-panel-wrapper {
     display: flex;
     justify-content: space-around;
-  }
+  }*/
 
-  .scene-section {
+  /*.scene-section {
     width: 100%;
-  }
+  }*/
 
   .charts-container {
     grid-template-columns: 1fr;
   }
 }
 
+@media (max-width: 900px) {
+  .label-voltage {
+    display: none;
+  }
+}
+
 @media (max-width: 700px) {
+  .content {
+    padding: 20px;
+  }
+
   .current-components {
     display: flex;
     flex-direction: column;
   }
 
-  .controls-panel-wrapper,
+  .measurements-section {
+    display: none;
+  }
+
+  /*.controls-panel-wrapper,*/
   .param-row,
   .param-controls {
     flex-direction: column;
