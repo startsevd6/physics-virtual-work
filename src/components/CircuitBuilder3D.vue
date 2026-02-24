@@ -30,7 +30,7 @@
                 ></div>
               </div>
               <div class="progress-text">
-                {{ loadedModelsCount / totalModelsCount * 100 }} %
+                {{ (loadedModelsCount / totalModelsCount * 100).toFixed(0) }} %
               </div>
             </div>
           </div>
