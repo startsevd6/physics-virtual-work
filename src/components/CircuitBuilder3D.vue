@@ -114,7 +114,7 @@
           <tr>
             <th>Напряжение (В)</th>
             <th>Ток (А)</th>
-            <th>Сопротивление (Ω)</th>
+            <th>Сопротивление (Ом)</th>
             <th>Температура (K)</th>
             <th>Тип терморезистора</th>
           </tr>
@@ -176,9 +176,10 @@
     </div>
 
     <ErrorPopup
-        v-if="showError"
-        :message="errorMessage"
-        @close="showError = false"
+        v-if="popup.visible"
+        :message="popup.message"
+        :type="popup.type"
+        @close="popup.visible = false"
     />
   </div>
 </template>
@@ -190,7 +191,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshStandardMaterial, CatmullRomCurve3, TubeGeometry } from 'three';
 import { Chart, registerables } from 'chart.js';
-import ErrorPopup from './ErrorPopup.vue';
+import NotificationPopup from './NotificationPopup.vue';
 
 // Импортируем конфигурацию из отдельного файла
 import { decorativeConfigs, modelPaths } from '../config/3d-models';
@@ -210,7 +211,7 @@ type Component3D = {
 export default defineComponent({
   name: 'CircuitBuilder3D',
   components: {
-    ErrorPopup,
+    ErrorPopup: NotificationPopup,
   },
 
   setup() {
@@ -232,8 +233,6 @@ export default defineComponent({
 
     // Состояние приложения
     const globalTemp = ref(300);
-    const showError = ref(false);
-    const errorMessage = ref('');
     const selectedThermistorKind = ref('metal');
     const showShadows = ref(true);
     const voltageSpinner = ref<THREE.Object3D | null>(null);
@@ -1499,10 +1498,17 @@ export default defineComponent({
       updateCharts();
     }
 
-    /*function showErrorPopup(message: string) {
-      errorMessage.value = message;
-      showError.value = true;
-    }*/
+    const popup = reactive({
+      visible: false,
+      message: '',
+      type: 'error' as 'error' | 'success'
+    });
+
+    function showPopup(message: string, type: 'error' | 'success' = 'error') {
+      popup.message = message;
+      popup.type = type;
+      popup.visible = true;
+    }
 
     // Функция создания гнущихся проводов
     const WIRE_COLORS = [0xff0000, 0xffa500, 0xffa5c00, 0xffff00, 0x0000ff];
@@ -1614,15 +1620,15 @@ export default defineComponent({
       if (allPresentMetal) {
         circuitValid.value = true;
         circuitType.value = 'metal';
-        alert('Схема собрана верно для металлического терморезистора');
+        showPopup('Схема собрана верно для металлического терморезистора', 'success');
       } else if (allPresentSemiconductor) {
         circuitValid.value = true;
         circuitType.value = 'semiconductor';
-        alert('Схема собрана верно для полупроводникового терморезистора');
+        showPopup('Схема собрана верно для полупроводникового терморезистора', 'success');
       } else {
         circuitValid.value = false;
         circuitType.value = null;
-        alert('Схема собрана неверно');
+        showPopup('Схема собрана неверно', 'error');
       }
     }
 
@@ -1709,8 +1715,7 @@ export default defineComponent({
       uiChartCanvas,
       rtChartCanvas,
       globalTemp,
-      showError,
-      errorMessage,
+      popup,
       snapshots,
       currentI,
       selectedThermistorKind,
