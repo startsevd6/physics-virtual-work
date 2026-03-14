@@ -1494,6 +1494,7 @@ export default defineComponent({
     const WIRE_COLORS = [0xff0000, 0xffa500, 0xffa5c00, 0xffff00, 0x0000ff];
     function createWireBetweenPorts(portName1: string, portName2: string) {
       if (!scene) return;
+      console.log(portName1, portName2)
 
       // Проверяем, остались ли доступные цвета
       if (wires.value.length >= WIRE_COLORS.length) {
@@ -1568,22 +1569,38 @@ export default defineComponent({
 
     // Функция проверки схемы
     function checkCircuit() {
-      const requiredPairs = [
-        ['port_1_1', 'port_thermistor_13'],
+      const requiredPairsMetal = [
+        ['port_1_1', 'port_thermistor_16'],
         ['port_1_2', 'port_2_4'],
-        ['port_2_3', 'port_thermistor_17'],
-        ['port_thermistor_12', 'port_1_3'],
-        ['port_1_4', 'port_thermistor_14']
+        ['port_1_3', 'port_thermistor_15'],
+        ['port_1_4', 'port_thermistor_17'],
+        ['port_2_3', 'port_thermistor_12']
       ];
 
-      const allPresent = requiredPairs.every(([a, b]) => {
+      const requiredPairsSemiconductor = [
+        ['port_1_1', 'port_thermistor_14'],
+        ['port_1_2', 'port_2_4'],
+        ['port_1_3', 'port_thermistor_13'],
+        ['port_1_4', 'port_thermistor_17'],
+        ['port_2_3', 'port_thermistor_12']
+      ];
+
+      const allPresentMetal = requiredPairsMetal.every(([a, b]) => {
         return connections.value.some(conn =>
             (conn.port1 === a && conn.port2 === b) || (conn.port1 === b && conn.port2 === a)
         );
       });
 
-      if (allPresent) {
-        alert('Схема собрана верно');
+      const allPresentSemiconductor = requiredPairsSemiconductor.every(([a, b]) => {
+        return connections.value.some(conn =>
+            (conn.port1 === a && conn.port2 === b) || (conn.port1 === b && conn.port2 === a)
+        );
+      });
+
+      if (allPresentMetal) {
+        alert('Схема собрана верно для металлического терморезистора');
+      } else if (allPresentSemiconductor) {
+        alert('Схема собрана верно для полупроводникового терморезистора')
       } else {
         alert('Схема собрана неверно');
       }
