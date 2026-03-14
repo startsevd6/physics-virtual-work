@@ -1041,7 +1041,7 @@ export default defineComponent({
             y: {
               title: {
                 display: true,
-                text: 'Сопротивление R, Ω',
+                text: 'Сопротивление R, Ом',
                 font: {
                   size: 14,
                   weight: 'bold'
