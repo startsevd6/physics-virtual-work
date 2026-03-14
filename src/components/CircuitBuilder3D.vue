@@ -93,7 +93,11 @@
             </div>
 
             <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px;align-items:stretch">
-              <button @click="saveSnapshot">Сохранить показания</button>
+              <button
+                  @click="saveSnapshot"
+                  :disabled="!circuitValid"
+                  class="save-button"
+              >Сохранить показания</button>
               <button @click="resetValues">Сброс</button>
               <button @click="checkCircuit">Проверить схему</button>
             </div>
@@ -298,6 +302,10 @@ export default defineComponent({
 
     // Массив соединений (какие порты соединены)
     const connections = ref<Array<{port1: string, port2: string}>>([]);
+
+    // Состояние проверки схемы
+    const circuitValid = ref(false); // пройдена ли проверка
+    const circuitType = ref<'metal' | 'semiconductor' | null>(null); // тип схемы после проверки
 
     // Функция для обновления прогресса загрузки
     function incrementLoadedModels() {
@@ -1381,18 +1389,20 @@ export default defineComponent({
 
     // Сохранение измерений
     function saveSnapshot() {
+      if (!circuitValid.value || !circuitType.value) {
+        return;
+      }
+
       const V = sourceComponent.data.voltage || 0;
       const T = globalTemp.value;
       let Rsample = calculateCurrentResistance(thermistorComponent.data);
 
-      // Получаем тип терморезистора из данных компонента
-      const thermistorType = thermistorComponent.data.kind;
-
+      // Используем тип, определённый при проверке схемы
       const snapshot: any = {
         V: V.toFixed(2),
         R: isNaN(Rsample) ? '—' : Rsample.toFixed(2),
         T,
-        thermistorType // Добавляем тип терморезистора
+        thermistorType: circuitType.value
       };
 
       const I = calculateCurrent();
@@ -1460,6 +1470,10 @@ export default defineComponent({
 
       // Очищаем список соединений
       connections.value = [];
+
+      // Сбрасываем состояние проверки
+      circuitValid.value = false;
+      circuitType.value = null;
 
       updateAllDisplays();
       updateCurrent();
@@ -1598,10 +1612,16 @@ export default defineComponent({
       });
 
       if (allPresentMetal) {
+        circuitValid.value = true;
+        circuitType.value = 'metal';
         alert('Схема собрана верно для металлического терморезистора');
       } else if (allPresentSemiconductor) {
-        alert('Схема собрана верно для полупроводникового терморезистора')
+        circuitValid.value = true;
+        circuitType.value = 'semiconductor';
+        alert('Схема собрана верно для полупроводникового терморезистора');
       } else {
+        circuitValid.value = false;
+        circuitType.value = null;
         alert('Схема собрана неверно');
       }
     }
@@ -1617,6 +1637,12 @@ export default defineComponent({
     watch(() => sourceComponent.data.voltage, () => {
       updateCharts();
     });
+
+    // При изменении соединений сбрасываем статус проверки
+    watch(connections, () => {
+      circuitValid.value = false;
+      circuitType.value = null;
+    }, { deep: true });
 
     // Хуки жизненного цикла
     onMounted(() => {
@@ -1700,6 +1726,10 @@ export default defineComponent({
       totalModelsCount,
       loadingProgress,
 
+      // Состояние проверки
+      circuitValid,
+      circuitType,
+
       // Methods
       handleWheelScroll,
       saveSnapshot,
@@ -1759,7 +1789,6 @@ strong, div {
   opacity: 1;
   transform: translateY(0px);
 }
-
 
 .circuit-container {
   min-height: calc(100vh - 160px);
@@ -2050,7 +2079,6 @@ strong, div {
 }
 
 .input {
-  /*width: 80px;*/
   padding: 6px 8px;
   border: 1px solid #d1d5db;
   border-radius: 4px;
@@ -2208,7 +2236,6 @@ strong, div {
 
 button {
   padding: 8px 16px;
-  background: #4f46e5;
   color: white;
   border: none;
   border-radius: 6px;
@@ -2217,12 +2244,16 @@ button {
   transition: all 0.2s;
 }
 
-button:hover {
+button:not(.save-button) {
+  background: #4f46e5;
+}
+
+button:not(.save-button):hover {
   background: #4338ca;
   transform: translateY(-1px);
 }
 
-button:active {
+button:not(.save-button):active {
   transform: translateY(0);
 }
 
@@ -2232,6 +2263,27 @@ button:nth-child(3) {
 
 button:nth-child(3):hover {
   background: #0da271;
+}
+
+button.save-button {
+  background: #4f46e5;
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+button.save-button:enabled {
+  background: #10b981;
+  opacity: 1;
+  cursor: pointer;
+}
+
+button.save-button:enabled:hover {
+  background: #0da271;
+  transform: translateY(-1px);
+}
+
+button.save-button:enabled:active {
+  transform: translateY(0);
 }
 
 @media (max-width: 1900px) {
