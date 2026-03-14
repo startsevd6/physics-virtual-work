@@ -1,21 +1,6 @@
 <template>
   <div class="content">
     <div class="circuit-container">
-      <!--
-        <div class="controls-panel">
-          <h4>Управление</h4>
-
-          <div class="controls-panel-wrapper">
-            <div class="shadow-control">
-              <label>Тени:</label>
-              <button class="shadow-toggle-btn" @click="toggleShadows">
-                {{ showShadows ? 'Выключить' : 'Включить' }}
-              </button>
-            </div>
-          </div>
-        </div>
-      -->
-
       <div class="scene-section">
         <!-- Оверлей загрузки -->
         <div v-if="isLoading" class="loading-overlay">
@@ -110,7 +95,6 @@
             <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px;align-items:stretch">
               <button @click="saveSnapshot">Сохранить показания</button>
               <button @click="resetValues">Сброс</button>
-              <button @click="updateCharts">Обновить графики</button>
               <button @click="checkCircuit">Проверить схему</button>
             </div>
           </div>
@@ -1415,6 +1399,9 @@ export default defineComponent({
       snapshot.I = I !== null ? I.toFixed(4) : '—';
 
       snapshots.value.unshift(snapshot);
+
+      // Автоматически обновляем графики после добавления новой записи
+      updateCharts();
     }
 
     // Функция для получения читаемого названия типа терморезистора
@@ -1703,7 +1690,6 @@ export default defineComponent({
       //calculateCurrentResistance,
       //toggleShadows,
       getThermistorTypeLabel,
-      updateCharts,
       checkCircuit,
     };
   }
