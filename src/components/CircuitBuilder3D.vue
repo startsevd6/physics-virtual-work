@@ -1241,8 +1241,16 @@ export default defineComponent({
           const portName = meshToPortMap.value.get(hitMesh);
           if (!portName) return;
 
+          // Проверяем, занят ли порт (участвует ли уже в соединении)
+          const isPortUsed = (port: string) =>
+              connections.value.some(conn => conn.port1 === port || conn.port2 === port);
+
           if (firstSelectedPort.value === null) {
             // Первый клик - выбираем порт
+            if (isPortUsed(portName)) {
+              showPopup('Этот порт уже занят', 'error');
+              return; // не выделяем занятый порт
+            }
             firstSelectedPort.value = portName;
             highlightPort(portName);
           } else if (firstSelectedPort.value === portName) {
@@ -1250,23 +1258,32 @@ export default defineComponent({
             firstSelectedPort.value = null;
             highlightPort(null);
           } else {
-            // Клик на другой порт - создаём провод с коннекторами
-            await createWireBetweenPorts(firstSelectedPort.value, portName);
-            // Снимаем выделение
+            // Клик на другой порт - проверяем, свободны ли оба
+            const port1 = firstSelectedPort.value;
+            const port2 = portName;
+
+            if (isPortUsed(port1) || isPortUsed(port2)) {
+              showPopup('Один из портов уже занят', 'error');
+              // Снимаем выделение
+              firstSelectedPort.value = null;
+              highlightPort(null);
+              return;
+            }
+
+            // Оба свободны - создаём провод
+            await createWireBetweenPorts(port1, port2);
             firstSelectedPort.value = null;
             highlightPort(null);
           }
         } else {
-          // Клик не по порту - снимаем выделение
+          // Клик не по порту - снимаем выделение и сбрасываем hover
           firstSelectedPort.value = null;
           highlightPort(null);
 
           // Сброс hover
           if (hoveredPortName.value) {
             const prevPort = decorativeElementsMap.value.get(hoveredPortName.value);
-            if (prevPort && firstSelectedPort.value !== hoveredPortName.value) {
-              setPortEmissive(prevPort, 0x000000);
-            }
+            if (prevPort) setPortEmissive(prevPort, 0x000000);
             hoveredPortName.value = null;
           }
         }
