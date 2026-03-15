@@ -1611,7 +1611,7 @@ export default defineComponent({
 
       // Проверяем, остались ли доступные цвета
       if (wires.value.length >= WIRE_COLORS.length) {
-        alert('Достигнуто максимальное количество проводов');
+        showPopup('Достигнуто максимальное количество проводов', 'error');
         return;
       }
 
