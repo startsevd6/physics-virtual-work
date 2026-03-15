@@ -1607,7 +1607,7 @@ export default defineComponent({
       mid.z = 0.8; // изгиб
 
       const curve = new CatmullRomCurve3([start, mid, end]);
-      const tubeGeo = new TubeGeometry(curve, 64, 0.015, 8, false);
+      const tubeGeo = new TubeGeometry(curve, 64, 0.0075, 8, false);
       const color = WIRE_COLORS[wires.value.length];
       const material = new THREE.MeshStandardMaterial({ color });
       const wire = new THREE.Mesh(tubeGeo, material);
