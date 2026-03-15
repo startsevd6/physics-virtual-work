@@ -295,8 +295,9 @@ export default defineComponent({
     const portMeshes = ref<THREE.Mesh[]>([]);
     const meshToPortMap = ref<Map<THREE.Mesh, string>>(new Map());
 
-    // Для хранения созданных проводов и состояния выбора первого порта
+    // Для хранения созданных проводов, коннекторов и состояния выбора первого порта
     const wires = ref<THREE.Mesh[]>([]);
+    const connectors = ref<Array<{ wire: THREE.Mesh, connector1: THREE.Object3D, connector2: THREE.Object3D }>>([]);
     const firstSelectedPort = ref<string | null>(null);
 
     // Массив соединений (какие порты соединены)
@@ -305,6 +306,11 @@ export default defineComponent({
     // Состояние проверки схемы
     const circuitValid = ref(false); // пройдена ли проверка
     const circuitType = ref<'metal' | 'semiconductor' | null>(null); // тип схемы после проверки
+
+    // Константы
+    const CONNECTOR_MODEL_PATH = './models/connector.glb';
+    const CONNECTOR_SCALE = 0.1; // масштаб модели коннектора
+    const CONNECTOR_OFFSET = 0.075; // смещение точки крепления провода от центра коннектора
 
     // Функция для обновления прогресса загрузки
     function incrementLoadedModels() {
@@ -1157,7 +1163,7 @@ export default defineComponent({
       }, 1000);
 
       // Обработчик клика для выделения портов и создания проводов
-      const onClick = (event: MouseEvent) => {
+      const onClick = async (event: MouseEvent) => {
         if (!renderer || !camera || !scene) return;
 
         const raycaster = new THREE.Raycaster();
@@ -1188,8 +1194,8 @@ export default defineComponent({
             firstSelectedPort.value = null;
             highlightPort(null);
           } else {
-            // Клик на другой порт - создаём провод
-            createWireBetweenPorts(firstSelectedPort.value, portName);
+            // Клик на другой порт - создаём провод с коннекторами
+            await createWireBetweenPorts(firstSelectedPort.value, portName);
             // Снимаем выделение
             firstSelectedPort.value = null;
             highlightPort(null);
@@ -1447,12 +1453,13 @@ export default defineComponent({
         controls.update();
       }
 
-      // Снимаем выделение порта и удаляем все созданные провода
+      // Снимаем выделение порта
       firstSelectedPort.value = null;
       highlightPort(null);
 
-      // Удаляем все провода из сцены
+      // Удаляем все провода и коннекторы из сцены
       if (scene) {
+        // Удаляем провода
         wires.value.forEach(wire => {
           scene?.remove(wire);
           if (wire.geometry) wire.geometry.dispose();
@@ -1465,6 +1472,28 @@ export default defineComponent({
           }
         });
         wires.value = [];
+
+        // Удаляем коннекторы
+        connectors.value.forEach(item => {
+          scene?.remove(item.connector1);
+          scene?.remove(item.connector2);
+          // Очистка ресурсов коннекторов (опционально)
+          item.connector1.traverse((obj: any) => {
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) {
+              if (Array.isArray(obj.material)) obj.material.forEach((m: any) => m.dispose());
+              else obj.material.dispose();
+            }
+          });
+          item.connector2.traverse((obj: any) => {
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) {
+              if (Array.isArray(obj.material)) obj.material.forEach((m: any) => m.dispose());
+              else obj.material.dispose();
+            }
+          });
+        });
+        connectors.value = [];
       }
 
       // Очищаем список соединений
@@ -1510,11 +1539,10 @@ export default defineComponent({
       popup.visible = true;
     }
 
-    // Функция создания гнущихся проводов
+    // Функция создания гнущихся проводов с коннекторами
     const WIRE_COLORS = [0xff0000, 0xffa500, 0xffa5c00, 0xffff00, 0x0000ff];
-    function createWireBetweenPorts(portName1: string, portName2: string) {
-      if (!scene) return;
-      console.log(portName1, portName2)
+    async function createWireBetweenPorts(portName1: string, portName2: string) {
+      if (!scene || !loader) return;
 
       // Проверяем, остались ли доступные цвета
       if (wires.value.length >= WIRE_COLORS.length) {
@@ -1523,19 +1551,64 @@ export default defineComponent({
       }
 
       const map = decorativeElementsMap.value;
-      const p1 = map.get(portName1)?.position.clone();
-      const p2 = map.get(portName2)?.position.clone();
-      if (!p1 || !p2) return;
+      const portObj1 = map.get(portName1);
+      const portObj2 = map.get(portName2);
+      if (!portObj1 || !portObj2) return;
 
-      // Выбираем цвет по порядку
-      const color = WIRE_COLORS[wires.value.length];
+      // Получаем позиции и кватернионы портов
+      const pos1 = portObj1.position.clone();
+      const pos2 = portObj2.position.clone();
+      const quat1 = portObj1.quaternion.clone();
+      const quat2 = portObj2.quaternion.clone();
+
+      // Направления осей портов (предполагаем, что коннектор должен быть направлен по +Z)
+      const dir1 = new THREE.Vector3(1, 0, 0).applyQuaternion(quat1);
+      const dir2 = new THREE.Vector3(1, 0, 0).applyQuaternion(quat2);
+
+      // Загружаем модель коннектора (используем кэш)
+      const connectorModel = await loadModelWithCache(CONNECTOR_MODEL_PATH);
+      if (!connectorModel) {
+        console.warn('Не удалось загрузить модель коннектора');
+        return;
+      }
+
+      // Создаём и настраиваем коннекторы
+      const connector1 = connectorModel.clone();
+      const connector2 = connectorModel.clone();
+
+      [connector1, connector2].forEach(conn => {
+        conn.traverse(child => {
+          if ((child as THREE.Mesh).isMesh) {
+            child.castShadow = showShadows.value;
+            child.receiveShadow = showShadows.value;
+          }
+        });
+      });
+
+      connector1.scale.set(CONNECTOR_SCALE, CONNECTOR_SCALE, CONNECTOR_SCALE);
+      connector2.scale.set(CONNECTOR_SCALE, CONNECTOR_SCALE, CONNECTOR_SCALE);
+
+      // Размещаем в позициях портов и применяем их повороты
+      connector1.position.copy(pos1);
+      connector2.position.copy(pos2);
+      connector1.quaternion.copy(quat1);
+      connector2.quaternion.copy(quat2);
+
+      scene.add(connector1);
+      scene.add(connector2);
+
+      // Точки крепления провода – концы коннекторов (смещение вдоль направления порта)
+      const start = pos1.clone().add(dir1.multiplyScalar(CONNECTOR_OFFSET));
+      const end = pos2.clone().add(dir2.multiplyScalar(CONNECTOR_OFFSET));
+
 
       // Создаём изогнутый провод
-      const mid = new THREE.Vector3().lerpVectors(p1, p2, 0.5);
-      mid.z = 0.8; // смещаем середину для изгиба
+      const mid = new THREE.Vector3().lerpVectors(start, end, 0.5);
+      mid.z = 0.8; // изгиб
 
-      const curve = new CatmullRomCurve3([p1, mid, p2]);
+      const curve = new CatmullRomCurve3([start, mid, end]);
       const tubeGeo = new TubeGeometry(curve, 64, 0.015, 8, false);
+      const color = WIRE_COLORS[wires.value.length];
       const material = new THREE.MeshStandardMaterial({ color });
       const wire = new THREE.Mesh(tubeGeo, material);
 
@@ -1543,7 +1616,10 @@ export default defineComponent({
       wire.receiveShadow = showShadows.value;
 
       scene.add(wire);
+
+      // Сохраняем всё
       wires.value.push(wire);
+      connectors.value.push({ wire, connector1, connector2 });
 
       // Сохраняем соединение
       connections.value.push({ port1: portName1, port2: portName2 });
@@ -1695,6 +1771,23 @@ export default defineComponent({
           }
         });
         wires.value = [];
+
+        // Удаляем коннекторы
+        connectors.value.forEach(item => {
+          scene?.remove(item.connector1);
+          scene?.remove(item.connector2);
+          // Очистка ресурсов
+          [item.connector1, item.connector2].forEach(conn => {
+            conn.traverse((obj: any) => {
+              if (obj.geometry) obj.geometry.dispose();
+              if (obj.material) {
+                if (Array.isArray(obj.material)) obj.material.forEach((m: any) => m.dispose());
+                else obj.material.dispose();
+              }
+            });
+          });
+        });
+        connectors.value = [];
       }
 
       // Очищаем соединения
