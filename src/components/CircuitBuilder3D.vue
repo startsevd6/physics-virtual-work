@@ -312,6 +312,9 @@ export default defineComponent({
     const CONNECTOR_SCALE = 0.1; // масштаб модели коннектора
     const CONNECTOR_OFFSET = 0.075; // смещение точки крепления провода от центра коннектора
 
+    // Хранение обработчика
+    let mouseMoveHandler: ((event: MouseEvent) => void) | null = null;
+
     // Функция для обновления прогресса загрузки
     function incrementLoadedModels() {
       loadedModelsCount.value++;
@@ -1076,6 +1079,8 @@ export default defineComponent({
       createRTChart();
     }
 
+    const hoveredPortName = ref<string | null>(null);
+
     // Инициализация Three.js сцены
     function initThreeJS() {
       if (!sceneContainer.value) return;
@@ -1138,6 +1143,57 @@ export default defineComponent({
       floor.position.y = -0.175;
       floor.receiveShadow = showShadows.value;
       scene.add(floor);
+
+      const mouseMoveHandler = (event: MouseEvent) => {
+        if (!renderer || !camera || !scene) return;
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+
+        const intersects = raycaster.intersectObjects(portMeshes.value);
+
+        if (intersects.length > 0) {
+          const hitMesh = intersects[0]?.object as THREE.Mesh;
+          const portName = meshToPortMap.value.get(hitMesh);
+          if (portName) {
+            if (hoveredPortName.value !== portName) {
+              // Сброс предыдущего hover
+              if (hoveredPortName.value) {
+                const prevPort = decorativeElementsMap.value.get(hoveredPortName.value);
+                if (prevPort && firstSelectedPort.value !== hoveredPortName.value) {
+                  setPortEmissive(prevPort, 0x000000);
+                }
+              }
+              // Установка нового hover, если порт не выделен
+              if (firstSelectedPort.value !== portName) {
+                const newPort = decorativeElementsMap.value.get(portName);
+                if (newPort) {
+                  setPortEmissive(newPort, 0x333333); // серый цвет свечения
+                }
+              }
+              hoveredPortName.value = portName;
+            }
+            return; // выход после обработки
+          }
+        }
+
+        // Если пересечений нет или порт не найден
+        if (hoveredPortName.value) {
+          const prevPort = decorativeElementsMap.value.get(hoveredPortName.value);
+          if (prevPort && firstSelectedPort.value !== hoveredPortName.value) {
+            setPortEmissive(prevPort, 0x000000);
+          }
+          hoveredPortName.value = null;
+        }
+      };
+
+      renderer.domElement.addEventListener('mousemove', mouseMoveHandler);
 
       // Загрузчик моделей
       loader = new GLTFLoader();
@@ -1204,6 +1260,15 @@ export default defineComponent({
           // Клик не по порту - снимаем выделение
           firstSelectedPort.value = null;
           highlightPort(null);
+
+          // Сброс hover
+          if (hoveredPortName.value) {
+            const prevPort = decorativeElementsMap.value.get(hoveredPortName.value);
+            if (prevPort && firstSelectedPort.value !== hoveredPortName.value) {
+              setPortEmissive(prevPort, 0x000000);
+            }
+            hoveredPortName.value = null;
+          }
         }
       };
 
@@ -1788,6 +1853,11 @@ export default defineComponent({
           });
         });
         connectors.value = [];
+      }
+
+      // Удаляем обработчик наведения мыши
+      if (renderer && mouseMoveHandler) {
+        renderer.domElement.removeEventListener('mousemove', mouseMoveHandler);
       }
 
       // Очищаем соединения
