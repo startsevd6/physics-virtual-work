@@ -847,15 +847,15 @@ export default defineComponent({
       const metalData = filteredSnapshots
           .filter(s => s.thermistorType === 'metal')
           .map(s => ({
-            x: parseFloat(s.I || 0), // ток
-            y: parseFloat(s.V) // напряжение
+            x: parseFloat(s.V),
+            y: parseFloat(s.I || 0)
           }));
 
       const semiData = filteredSnapshots
           .filter(s => s.thermistorType === 'semiconductor')
           .map(s => ({
-            x: parseFloat(s.I || 0), // ток
-            y: parseFloat(s.V) // напряжение
+            x: parseFloat(s.V),
+            y: parseFloat(s.I || 0)
           }));
 
       uiChart = new Chart(ctx, {
@@ -908,7 +908,7 @@ export default defineComponent({
                     label += ': ';
                   }
                   const point = context.raw as { x: number; y: number };
-                  label += `U = ${point.y?.toFixed(2)} В, I = ${point.x?.toFixed(4)} А`;
+                  label += `U = ${point.x?.toFixed(2)} В, I = ${point.y?.toFixed(4)} А`;
                   return label;
                 }
               }
@@ -916,19 +916,6 @@ export default defineComponent({
           },
           scales: {
             x: {
-              title: {
-                display: true,
-                text: 'Ток I, А',
-                font: {
-                  size: 14,
-                  weight: 'bold'
-                }
-              },
-              grid: {
-                color: 'rgba(0, 0, 0, 0.1)'
-              }
-            },
-            y: {
               title: {
                 display: true,
                 text: 'Напряжение U, В',
@@ -940,8 +927,21 @@ export default defineComponent({
               grid: {
                 color: 'rgba(0, 0, 0, 0.1)'
               },
-              min: 0,
+              min: 1.5,
               max: 4.5,
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Ток I, А',
+                font: {
+                  size: 14,
+                  weight: 'bold'
+                }
+              },
+              grid: {
+                color: 'rgba(0, 0, 0, 0.1)'
+              },
             }
           }
         }
