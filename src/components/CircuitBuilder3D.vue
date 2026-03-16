@@ -1589,44 +1589,33 @@ export default defineComponent({
 
       // Удаляем все провода и коннекторы из сцены
       if (scene) {
-        // Удаляем провода
-        wires.value.forEach(wire => {
-          scene?.remove(wire);
-          if (wire.geometry) wire.geometry.dispose();
-          if (wire.material) {
-            if (Array.isArray(wire.material)) {
-              wire.material.forEach(m => m.dispose());
-            } else {
-              wire.material.dispose();
+        // Удаляем все объекты с userData.type = 'wire' или 'connector'
+        const objectsToRemove: THREE.Object3D[] = [];
+        scene.traverse((obj) => {
+          if (obj.userData.type === 'wire' || obj.userData.type === 'connector') {
+            objectsToRemove.push(obj);
+          }
+        });
+        objectsToRemove.forEach(obj => {
+          scene?.remove(obj);
+          // Освобождаем ресурсы (геометрии, материалы)
+          if ((obj as THREE.Mesh).isMesh) {
+            const mesh = obj as THREE.Mesh;
+            if (mesh.geometry) mesh.geometry.dispose();
+            if (mesh.material) {
+              if (Array.isArray(mesh.material)) {
+                mesh.material.forEach(m => m.dispose());
+              } else {
+                mesh.material.dispose();
+              }
             }
           }
         });
-        wires.value = [];
-
-        // Удаляем коннекторы
-        connectors.value.forEach(item => {
-          scene?.remove(item.connector1);
-          scene?.remove(item.connector2);
-          // Очистка ресурсов коннекторов (опционально)
-          item.connector1.traverse((obj: any) => {
-            if (obj.geometry) obj.geometry.dispose();
-            if (obj.material) {
-              if (Array.isArray(obj.material)) obj.material.forEach((m: any) => m.dispose());
-              else obj.material.dispose();
-            }
-          });
-          item.connector2.traverse((obj: any) => {
-            if (obj.geometry) obj.geometry.dispose();
-            if (obj.material) {
-              if (Array.isArray(obj.material)) obj.material.forEach((m: any) => m.dispose());
-              else obj.material.dispose();
-            }
-          });
-        });
-        connectors.value = [];
       }
 
       // Очищаем список соединений
+      wires.value = [];
+      connectors.value = [];
       connections.value = [];
 
       // Сбрасываем состояние проверки
@@ -1778,6 +1767,10 @@ export default defineComponent({
 
       // Сохраняем соединение
       connections.value.push({ port1: portName1, port2: portName2 });
+
+      wire.userData = { type: 'wire' };
+      connector1.userData = { type: 'connector' };
+      connector2.userData = { type: 'connector' };
     }
 
     // Функции для выделения портов
