@@ -43,6 +43,7 @@
                   v-model.number="globalTemp"
                   class="slider"
                   @wheel.prevent="handleWheelScroll"
+                  :disabled="!circuitValid"
               />
               <div>{{ globalTemp }} K</div>
             </div>
@@ -60,6 +61,7 @@
                         step="0.1"
                         v-model.number="sourceComponent.data.voltage"
                         class="slider"
+                        :disabled="!circuitValid"
                     />
                     <input
                         type="number"
@@ -68,6 +70,7 @@
                         step="0.1"
                         v-model.number="sourceComponent.data.voltage"
                         class="input"
+                        :disabled="!circuitValid"
                     />
                     <span class="param-unit">В</span>
                   </div>
@@ -82,7 +85,7 @@
               <strong>Амперметр</strong>
               <div class="component-params">
                 <div class="param-info">
-                  <div v-if="currentI !== null">
+                  <div v-if="circuitValid && currentI !== null">
                     Текущий ток: {{ currentI.toFixed(4) }} А
                   </div>
                   <div v-else>
@@ -783,26 +786,28 @@ export default defineComponent({
 
     // Функция для обновления всех дисплеев
     function updateAllDisplays() {
-      // Обновляем дисплей температуры на терморезисторе
+      const valid = circuitValid.value;
+
+      // Дисплей температуры на терморезисторе
       updateDisplayText(
           thermistorDisplay.value,
-          `${globalTemp.value}`,
+          valid ? `${globalTemp.value}` : '',
           displayConfigs.find(c => c.name === 'thermistor_display')
       );
 
-      // Обновляем дисплей напряжения на вольтамперметре
-      const voltage = sourceComponent.data.voltage || 0;
+      // Дисплей напряжения на вольтметре
+      const voltage = valid ? (sourceComponent.data.voltage || 0) : 0;
       updateDisplayText(
           voltmeterDisplay.value,
-          `${voltage.toFixed(2)}`,
+          valid ? `${voltage.toFixed(2)}` : '',
           displayConfigs.find(c => c.name === 'voltmeter_display_top')
       );
 
-      // Обновляем дисплей тока на вольтамперметре
-      const current = calculateCurrent();
+      // Дисплей тока на амперметре
+      const current = valid ? calculateCurrent() : null;
       updateDisplayText(
           ammeterDisplay.value,
-          current !== null ? `${current.toFixed(2)}` : '0.00',
+          valid && current !== null ? `${current.toFixed(2)}` : '',
           displayConfigs.find(c => c.name === 'ammeter_display_bottom')
       );
     }
@@ -2319,6 +2324,11 @@ strong, div {
   cursor: pointer;
 }
 
+.slider:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
@@ -2345,6 +2355,12 @@ strong, div {
   font-size: 14px;
   text-align: center;
   appearance: textfield;
+}
+
+.input:disabled {
+  background-color: #f0f0f0;
+  color: #999;
+  cursor: not-allowed;
 }
 
 .input::-webkit-inner-spin-button,
