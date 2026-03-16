@@ -315,6 +315,12 @@ export default defineComponent({
     // Хранение обработчика
     let mouseMoveHandler: ((event: MouseEvent) => void) | null = null;
 
+    // Состояние нажатых клавиш
+    const keysPressed = ref<Set<string>>(new Set());
+
+    // Для расчёта delta времени
+    let clock: THREE.Clock | null = null;
+
     // Функция для обновления прогресса загрузки
     function incrementLoadedModels() {
       loadedModelsCount.value++;
@@ -1324,6 +1330,43 @@ export default defineComponent({
       // Обновляем вращение спиннеров
       updateVoltageSpinnerRotation();
       updateThermistorSpinnerRotation();
+
+      if (keysPressed.value.size > 0 && camera && controls) {
+        const delta = clock!.getDelta();
+        const speed = 0.5; // единиц в секунду – подберите под свой масштаб
+        const moveDist = speed * delta;
+
+        // Направление "вперёд" (без учёта вертикальной составляющей)
+        const forward = new THREE.Vector3();
+        camera.getWorldDirection(forward);
+        forward.y = 0;
+        if (forward.lengthSq() < 0.001) {
+          // Если камера смотрит строго вверх/вниз – используем направление по умолчанию
+          forward.set(0, 0, -1);
+        } else {
+          forward.normalize();
+        }
+
+        // Направление "вправо" (перпендикулярно forward и глобальной оси Y)
+        const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
+
+        // Вектор перемещения
+        const move = new THREE.Vector3(0, 0, 0);
+
+        // WASD и стрелки
+        if (keysPressed.value.has('KeyW') || keysPressed.value.has('ArrowUp')) move.add(forward);
+        if (keysPressed.value.has('KeyS') || keysPressed.value.has('ArrowDown')) move.sub(forward);
+        if (keysPressed.value.has('KeyA') || keysPressed.value.has('ArrowLeft')) move.sub(right);
+        if (keysPressed.value.has('KeyD') || keysPressed.value.has('ArrowRight')) move.add(right);
+        if (keysPressed.value.has('KeyQ')) move.y -= 1;
+        if (keysPressed.value.has('KeyE')) move.y += 1;
+
+        if (move.lengthSq() > 0) {
+          move.normalize().multiplyScalar(moveDist);
+          camera.position.add(move);
+          controls.target.add(move);
+        }
+      }
     }
 
     // Обработка изменения размера окна
@@ -1621,6 +1664,31 @@ export default defineComponent({
       popup.visible = true;
     }
 
+    function handleKeyDown(event: KeyboardEvent) {
+      // Игнорируем события, если фокус на поле ввода
+      const target = event.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
+      const code = event.code;
+      // Список отслеживаемых физических кодов клавиш
+      const relevantCodes = [
+        'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE',
+        'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'
+      ];
+
+      if (relevantCodes.includes(code)) {
+        event.preventDefault();
+        keysPressed.value.add(code);
+      }
+    }
+
+    function handleKeyUp(event: KeyboardEvent) {
+      const code = event.code;
+      keysPressed.value.delete(code);
+    }
+
     // Функция создания гнущихся проводов с коннекторами
     const WIRE_COLORS = [0xff0000, 0xffa500, 0xffa5c00, 0xffff00, 0x0000ff];
     async function createWireBetweenPorts(portName1: string, portName2: string) {
@@ -1811,6 +1879,9 @@ export default defineComponent({
     // Хуки жизненного цикла
     onMounted(() => {
       initThreeJS();
+      window.addEventListener('keydown', handleKeyDown);
+      window.addEventListener('keyup', handleKeyUp);
+      clock = new THREE.Clock();
     });
 
     onUnmounted(() => {
@@ -1880,6 +1951,9 @@ export default defineComponent({
       // Очищаем соединения
       connections.value = [];
 
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+
       // Уничтожаем графики
       if (uiChart) {
         uiChart.destroy();
@@ -1904,6 +1978,7 @@ export default defineComponent({
       thermistorSpinner,
       sourceComponent,
       thermistorComponent,
+      keysPressed,
 
       // Состояние загрузки
       isLoading,
