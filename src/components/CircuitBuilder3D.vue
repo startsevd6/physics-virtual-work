@@ -1530,8 +1530,8 @@ export default defineComponent({
 
       // Сбрасываем камеру к начальной позиции
       if (camera && controls) {
-        camera.position.set(0, 2, 3);
-        camera.lookAt(0, 0, 0);
+        controls.target.set(0, 0, 0);
+        camera.position.set(0, 3, 5);
         controls.update();
       }
 
