@@ -1851,6 +1851,21 @@ export default defineComponent({
         circuitType.value = null;
         showPopup('Схема собрана неверно', 'error');
       }
+
+      if (circuitValid.value) {
+        // Устанавливаем тип терморезистора в соответствии с собранной схемой
+        thermistorComponent.data.kind = circuitType.value;
+
+        if (circuitType.value === 'metal') {
+          thermistorComponent.data.R0 = 100;
+          thermistorComponent.data.alpha = 0.0039;
+          thermistorComponent.data.B = undefined;
+        } else {
+          thermistorComponent.data.R0 = 1000;
+          thermistorComponent.data.alpha = undefined;
+          thermistorComponent.data.B = 3500;
+        }
+      }
     }
 
     // Следим за изменением типа терморезистора
