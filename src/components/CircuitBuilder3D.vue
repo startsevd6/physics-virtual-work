@@ -1573,9 +1573,6 @@ export default defineComponent({
       selectedThermistorKind.value = 'metal';
       updateThermistorKind();
 
-      // Очищаем сохраненные показания
-      snapshots.value = [];
-
       // Сбрасываем камеру к начальной позиции
       if (camera && controls) {
         controls.target.set(0, 0, 0);
