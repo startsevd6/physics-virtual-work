@@ -120,6 +120,7 @@
             <th>Сопротивление (Ом)</th>
             <th>Температура (K)</th>
             <th>Тип терморезистора</th>
+            <th>Действия</th>
           </tr>
           </thead>
           <tbody>
@@ -129,6 +130,9 @@
             <td>{{ s.R || '—' }}</td>
             <td>{{ s.T }}</td>
             <td>{{ getThermistorTypeLabel(s.thermistorType) }}</td>
+            <td>
+              <button class="delete-btn" @click="deleteSnapshot(i)" title="Удалить запись">x</button>
+            </td>
           </tr>
           </tbody>
         </table>
@@ -1561,6 +1565,12 @@ export default defineComponent({
       }
     }
 
+    // Функция удаления записи из таблицы
+    function deleteSnapshot(index: number) {
+      snapshots.value.splice(index, 1);
+      updateCharts(); // обновить графики после удаления
+    }
+
     // Сброс значений к значениям по умолчанию
     function resetValues() {
       // Сбрасываем напряжение источника
@@ -2007,6 +2017,7 @@ export default defineComponent({
       //calculateCurrentResistance,
       //toggleShadows,
       getThermistorTypeLabel,
+      deleteSnapshot,
       checkCircuit,
     };
   }
@@ -2513,6 +2524,26 @@ strong, div {
 
 .snapshots-table tbody tr:hover {
   background: #f3f4f6;
+}
+
+.delete-btn {
+  color: #dc2626;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s;
+  background: #fefefe !important;
+}
+
+.delete-btn:hover {
+  background: #fee2e2 !important;
+  transform: none;
+}
+
+.delete-btn:active {
+  background: #fecaca !important;
 }
 
 button {
