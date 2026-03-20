@@ -80,6 +80,7 @@ body {
 .header {
   display: flex;
   flex-direction: row;
+  gap: 15px;
   position: fixed;
   top: 0px;
   z-index: 1;
@@ -196,5 +197,25 @@ body {
 
 .instructions li:last-child {
   margin-bottom: 0;
+}
+
+@media (max-width: 700px) {
+  .header h1 {
+    font-size: 20px;
+  }
+
+  .subtitle {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 500px) {
+  .header h1 {
+    font-size: 16px;
+  }
+
+  .subtitle {
+    font-size: 12px;
+  }
 }
 </style>
