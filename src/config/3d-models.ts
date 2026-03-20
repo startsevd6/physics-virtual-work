@@ -96,7 +96,7 @@ export const decorativeConfigs: DecorativeElement[] = [
     },
     // Порты для вольтамперметра
     {
-        name: 'port_1_1',
+        name: 'port_amp_minus',
         path: './models/port.glb',
         position: new THREE.Vector3(-1.06, 0.22, 0.585),
         rotation: new THREE.Euler(0, -Math.PI / 2, 0),
@@ -104,7 +104,7 @@ export const decorativeConfigs: DecorativeElement[] = [
         shadowEnabled: true
     },
     {
-        name: 'port_1_2',
+        name: 'port_amp_plus',
         path: './models/port.glb',
         position: new THREE.Vector3(-0.97, 0.22, 0.585),
         rotation: new THREE.Euler(0, -Math.PI / 2, 0),
@@ -112,7 +112,7 @@ export const decorativeConfigs: DecorativeElement[] = [
         shadowEnabled: true
     },
     {
-        name: 'port_1_3',
+        name: 'port_volt_minus',
         path: './models/port.glb',
         position: new THREE.Vector3(-0.385, 0.22, 0.585),
         rotation: new THREE.Euler(0, -Math.PI / 2, 0),
@@ -120,7 +120,7 @@ export const decorativeConfigs: DecorativeElement[] = [
         shadowEnabled: true
     },
     {
-        name: 'port_1_4',
+        name: 'port_volt_plus',
         path: './models/port.glb',
         position: new THREE.Vector3(-0.305, 0.22, 0.585),
         rotation: new THREE.Euler(0, -Math.PI / 2, 0),
@@ -138,7 +138,7 @@ export const decorativeConfigs: DecorativeElement[] = [
     },
     // Порты для источника напряжения
     {
-        name: 'port_2_1',
+        name: 'port_stableU_source_minus',
         path: './models/port.glb',
         position: new THREE.Vector3(-1.1, 0.06, 0.585),
         rotation: new THREE.Euler(0, -Math.PI / 2, 0),
@@ -146,7 +146,7 @@ export const decorativeConfigs: DecorativeElement[] = [
         shadowEnabled: true
     },
     {
-        name: 'port_2_2',
+        name: 'port_stableU_source_plus',
         path: './models/port.glb',
         position: new THREE.Vector3(-1.015, 0.06, 0.585),
         rotation: new THREE.Euler(0, -Math.PI / 2, 0),
@@ -154,7 +154,7 @@ export const decorativeConfigs: DecorativeElement[] = [
         shadowEnabled: true
     },
     {
-        name: 'port_2_3',
+        name: 'port_DC_source_minus',
         path: './models/port.glb',
         position: new THREE.Vector3(-0.825, 0.06, 0.585),
         rotation: new THREE.Euler(0, -Math.PI / 2, 0),
@@ -162,7 +162,7 @@ export const decorativeConfigs: DecorativeElement[] = [
         shadowEnabled: true
     },
     {
-        name: 'port_2_4',
+        name: 'port_DC_source_plus',
         path: './models/port.glb',
         position: new THREE.Vector3(-0.745, 0.06, 0.585),
         rotation: new THREE.Euler(0, -Math.PI / 2, 0),
@@ -302,7 +302,7 @@ export const decorativeConfigs: DecorativeElement[] = [
         shadowEnabled: true
     },
     {
-        name: 'port_thermistor_12',
+        name: 'port_thermistor_common_1',
         path: './models/port.glb',
         position: new THREE.Vector3(0.8, 0.05, 0.1),
         rotation: new THREE.Euler(0, -Math.PI / 2, 2 * Math.PI / 5),
@@ -310,7 +310,7 @@ export const decorativeConfigs: DecorativeElement[] = [
         shadowEnabled: true
     },
     {
-        name: 'port_thermistor_13',
+        name: 'port_thermistor_R3_1',
         path: './models/port.glb',
         position: new THREE.Vector3(0.59, 0.076, -0.01),
         rotation: new THREE.Euler(0, -Math.PI / 2, 2 * Math.PI / 5),
@@ -318,7 +318,7 @@ export const decorativeConfigs: DecorativeElement[] = [
         shadowEnabled: true
     },
     {
-        name: 'port_thermistor_14',
+        name: 'port_thermistor_R3_2',
         path: './models/port.glb',
         position: new THREE.Vector3(0.65, 0.076, -0.01),
         rotation: new THREE.Euler(0, -Math.PI / 2, 2 * Math.PI / 5),
@@ -326,7 +326,7 @@ export const decorativeConfigs: DecorativeElement[] = [
         shadowEnabled: true
     },
     {
-        name: 'port_thermistor_15',
+        name: 'port_thermistor_R2_1',
         path: './models/port.glb',
         position: new THREE.Vector3(0.59, 0.1, -0.13),
         rotation: new THREE.Euler(0, -Math.PI / 2, 2 * Math.PI / 5),
@@ -334,7 +334,7 @@ export const decorativeConfigs: DecorativeElement[] = [
         shadowEnabled: true
     },
     {
-        name: 'port_thermistor_16',
+        name: 'port_thermistor_R2_2',
         path: './models/port.glb',
         position: new THREE.Vector3(0.65, 0.1, -0.13),
         rotation: new THREE.Euler(0, -Math.PI / 2, 2 * Math.PI / 5),
@@ -342,7 +342,7 @@ export const decorativeConfigs: DecorativeElement[] = [
         shadowEnabled: true
     },
     {
-        name: 'port_thermistor_17',
+        name: 'port_thermistor_common_2',
         path: './models/port.glb',
         position: new THREE.Vector3(0.8, 0.1, -0.13),
         rotation: new THREE.Euler(0, -Math.PI / 2, 2 * Math.PI / 5),

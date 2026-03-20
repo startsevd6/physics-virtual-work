@@ -844,7 +844,7 @@ export default defineComponent({
       });
     }
 
-    // Создание графика U = f(I)
+    // Создание графика I = f(U)
     function createUIChart() {
       if (!uiChartCanvas.value) return;
 
@@ -1821,19 +1821,19 @@ export default defineComponent({
     // Функция проверки схемы
     function checkCircuit() {
       const requiredPairsMetal = [
-        ['port_1_1', 'port_thermistor_16'],
-        ['port_1_2', 'port_2_4'],
-        ['port_1_3', 'port_thermistor_15'],
-        ['port_1_4', 'port_thermistor_17'],
-        ['port_2_3', 'port_thermistor_12']
+        ['port_amp_minus', 'port_thermistor_R2_2'],
+        ['port_amp_plus', 'port_DC_source_plus'],
+        ['port_volt_minus', 'port_thermistor_common_2'],
+        ['port_volt_plus', 'port_thermistor_R2_1'],
+        ['port_DC_source_minus', 'port_thermistor_common_1']
       ];
 
       const requiredPairsSemiconductor = [
-        ['port_1_1', 'port_thermistor_14'],
-        ['port_1_2', 'port_2_4'],
-        ['port_1_3', 'port_thermistor_13'],
-        ['port_1_4', 'port_thermistor_17'],
-        ['port_2_3', 'port_thermistor_12']
+        ['port_amp_minus', 'port_thermistor_R3_2'],
+        ['port_amp_plus', 'port_DC_source_plus'],
+        ['port_volt_minus', 'port_thermistor_common_2'],
+        ['port_volt_plus', 'port_thermistor_R3_1'],
+        ['port_DC_source_minus', 'port_thermistor_common_1']
       ];
 
       const allPresentMetal = requiredPairsMetal.every(([a, b]) => {
