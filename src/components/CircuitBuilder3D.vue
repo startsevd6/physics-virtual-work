@@ -1691,15 +1691,11 @@ export default defineComponent({
     }
 
     // Функция создания гнущихся проводов с коннекторами
-    const WIRE_COLORS = [0xff0000, 0xffa500, 0xffa5c00, 0xffff00, 0x0000ff];
     async function createWireBetweenPorts(portName1: string, portName2: string) {
       if (!scene || !loader) return;
 
-      // Проверяем, остались ли доступные цвета
-      if (wires.value.length >= WIRE_COLORS.length) {
-        showPopup('Достигнуто максимальное количество проводов', 'error');
-        return;
-      }
+      // Цвета: красный, оранжевый, жёлтый, зелёный, бирюзовый, синий
+      const WIRE_COLORS = [0xff0000, 0xffa500, 0xffff00, 0x00ff00, 0x00ffff, 0x0000ff];
 
       const map = decorativeElementsMap.value;
       const portObj1 = map.get(portName1);
@@ -1762,7 +1758,7 @@ export default defineComponent({
       const curve = new CubicBezierCurve3(start, start.clone().addScaledVector(dir1, 0.5), end.clone().addScaledVector(dir2, 0.5), end);
       //const curve = new CatmullRomCurve3([start, mid, end]);
       const tubeGeo = new TubeGeometry(curve, 64, 0.0075, 8, false);
-      const color = WIRE_COLORS[wires.value.length];
+      const color = WIRE_COLORS[wires.value.length % WIRE_COLORS.length]; // Закольцовано выбираем цвет провода из списка 
       const material = new THREE.MeshStandardMaterial({ color });
       const wire = new THREE.Mesh(tubeGeo, material);
 
