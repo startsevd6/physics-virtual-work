@@ -186,6 +186,23 @@ export const decorativeConfigs: DecorativeElement[] = [
         scale: 0.1,
         shadowEnabled: true
     },
+    // Рычажок включения терморезистора
+    {
+        name: 'ring_under_the_lever',
+        path: './models/ring_under_the_lever.glb',
+        position: new THREE.Vector3(0.91, 0.05, 0.01),
+        rotation: new THREE.Euler(Math.PI/15, -Math.PI / 2, 0),
+        scale: 0.13,
+        shadowEnabled: true
+    },
+    {
+        name: 'thermistor_lever',
+        path: './models/thermistor_lever.glb',
+        position: new THREE.Vector3(0.5075, -0.05, -0.04),
+        rotation: new THREE.Euler(Math.PI/15, -Math.PI / 2, 0),
+        scale: 0.25,
+        shadowEnabled: true
+    },
     // Спиннер для терморезистора
     {
         name: 'spinner_for_thermistor',
