@@ -143,9 +143,9 @@
         <h4>Графики зависимостей</h4>
 
         <div class="charts-container">
-          <!-- График U = f(I) при T=300K -->
+          <!-- График I = f(U) при T=300K -->
           <div class="chart-card">
-            <h5>Зависимость напряжения от тока U = f(I) при T=300K</h5>
+            <h5>Зависимость силы тока от напряжения I = f(U) при T=300K</h5>
             <div class="chart-wrapper">
               <canvas ref="uiChartCanvas" class="chart-canvas"></canvas>
             </div>
