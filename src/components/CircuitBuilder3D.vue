@@ -196,7 +196,7 @@ import { defineComponent, onMounted, onUnmounted, ref, reactive, watch, nextTick
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshStandardMaterial, CatmullRomCurve3, TubeGeometry } from 'three';
+import { MeshStandardMaterial, CubicBezierCurve3, TubeGeometry } from 'three';
 import { Chart, registerables } from 'chart.js';
 import NotificationPopup from './NotificationPopup.vue';
 
@@ -1691,15 +1691,11 @@ export default defineComponent({
     }
 
     // Функция создания гнущихся проводов с коннекторами
-    const WIRE_COLORS = [0xff0000, 0xffa500, 0xffa5c00, 0xffff00, 0x0000ff];
     async function createWireBetweenPorts(portName1: string, portName2: string) {
       if (!scene || !loader) return;
 
-      // Проверяем, остались ли доступные цвета
-      if (wires.value.length >= WIRE_COLORS.length) {
-        showPopup('Достигнуто максимальное количество проводов', 'error');
-        return;
-      }
+      // Цвета: красный, оранжевый, жёлтый, зелёный, бирюзовый, синий
+      const WIRE_COLORS = [0xff0000, 0xffa500, 0xffff00, 0x00ff00, 0x00ffff, 0x0000ff];
 
       const map = decorativeElementsMap.value;
       const portObj1 = map.get(portName1);
@@ -1740,8 +1736,10 @@ export default defineComponent({
       connector2.scale.set(CONNECTOR_SCALE, CONNECTOR_SCALE, CONNECTOR_SCALE);
 
       // Размещаем в позициях портов и применяем их повороты
-      connector1.position.copy(pos1);
-      connector2.position.copy(pos2);
+      // Смещаем коннектор относительно плоскости порта наружу,
+      // чтобы он сидел в нём плотно
+      connector1.position.copy(pos1.addScaledVector(dir1, CONNECTOR_OFFSET));
+      connector2.position.copy(pos2.addScaledVector(dir2, CONNECTOR_OFFSET));
       connector1.quaternion.copy(quat1);
       connector2.quaternion.copy(quat2);
 
@@ -1749,17 +1747,18 @@ export default defineComponent({
       scene.add(connector2);
 
       // Точки крепления провода – концы коннекторов (смещение вдоль направления порта)
-      const start = pos1.clone().add(dir1.multiplyScalar(CONNECTOR_OFFSET));
-      const end = pos2.clone().add(dir2.multiplyScalar(CONNECTOR_OFFSET));
-
+      const start = connector1.position.clone().addScaledVector(dir1, CONNECTOR_OFFSET);
+      const end = connector2.position.clone().addScaledVector(dir2, CONNECTOR_OFFSET);
 
       // Создаём изогнутый провод
-      const mid = new THREE.Vector3().lerpVectors(start, end, 0.5);
-      mid.z = 0.8; // изгиб
+      //const mid = new THREE.Vector3().lerpVectors(start, end, 0.5);
+      //mid.z = 0.8; // изгиб
 
-      const curve = new CatmullRomCurve3([start, mid, end]);
+      // Используем кривую Безье, чтобы получить торец провода ортогонально к направлению коннектора
+      const curve = new CubicBezierCurve3(start, start.clone().addScaledVector(dir1, 0.5), end.clone().addScaledVector(dir2, 0.5), end);
+      //const curve = new CatmullRomCurve3([start, mid, end]);
       const tubeGeo = new TubeGeometry(curve, 64, 0.0075, 8, false);
-      const color = WIRE_COLORS[wires.value.length];
+      const color = WIRE_COLORS[wires.value.length % WIRE_COLORS.length]; // Закольцовано выбираем цвет провода из списка 
       const material = new THREE.MeshStandardMaterial({ color });
       const wire = new THREE.Mesh(tubeGeo, material);
 
