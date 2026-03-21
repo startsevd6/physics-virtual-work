@@ -196,7 +196,7 @@ import { defineComponent, onMounted, onUnmounted, ref, reactive, watch, nextTick
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshStandardMaterial, CatmullRomCurve3, CubicBezierCurve3, TubeGeometry } from 'three';
+import { MeshStandardMaterial, CubicBezierCurve3, TubeGeometry } from 'three';
 import { Chart, registerables } from 'chart.js';
 import NotificationPopup from './NotificationPopup.vue';
 
