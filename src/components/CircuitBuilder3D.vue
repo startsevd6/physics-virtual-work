@@ -319,9 +319,6 @@ export default defineComponent({
     const CONNECTOR_SCALE = 0.1; // масштаб модели коннектора
     const CONNECTOR_OFFSET = 0.075; // смещение точки крепления провода от центра коннектора
 
-    // Хранение обработчика
-    let mouseMoveHandler: ((event: MouseEvent) => void) | null = null;
-
     // Состояние нажатых клавиш
     const keysPressed = ref<Set<string>>(new Set());
 
@@ -340,6 +337,19 @@ export default defineComponent({
     // Хранилище исходных позиций для анимации утопления
     const originalButtonPositions = ref<Map<string, THREE.Vector3>>(new Map());
     const originalButtonRotations = ref<Map<string, THREE.Euler>>(new Map());
+
+    // Переменные для интерактивных крутилок
+    const spinnerMeshes = ref<THREE.Mesh[]>([]);
+    const meshToSpinnerMap = ref<Map<THREE.Mesh, 'voltage' | 'thermistor'>>(new Map());
+    let activeSpinner: 'voltage' | 'thermistor' | null = null;
+    let isDraggingSpinner = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let dragStartValue = 0;
+    let originalCursorStyle = '';
+    // Чувствительность: изменение значения на 1 единицу за количество пикселей
+    const VOLTAGE_SENSITIVITY = 10;   // 10 пикселей = 1 В
+    const TEMP_SENSITIVITY = 2;       // 2 пикселя = 1 K
 
     // Функция для обновления прогресса загрузки
     function incrementLoadedModels() {
@@ -425,6 +435,25 @@ export default defineComponent({
             thermistorSpinner.value = model;
           }
 
+          // Добавляем меши крутилок в массив для рейкастинга
+          if (config.name === 'spinner_for_voltage_2' || config.name === 'spinner_for_thermistor') {
+            model.traverse((child) => {
+              if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                // Клонируем материал, чтобы избежать конфликтов
+                if (mesh.material) {
+                  if (Array.isArray(mesh.material)) {
+                    mesh.material = mesh.material.map(mat => mat.clone());
+                  } else {
+                    mesh.material = mesh.material.clone();
+                  }
+                }
+                spinnerMeshes.value.push(mesh);
+                meshToSpinnerMap.value.set(mesh, config.name === 'spinner_for_voltage_2' ? 'voltage' : 'thermistor');
+              }
+            });
+          }
+
           // Если это порт, обрабатываем его меши для кликабельности и уникальности материалов
           if (config.name.includes('port')) {
             // Проходим по всем дочерним мешам
@@ -483,6 +512,24 @@ export default defineComponent({
               voltageSpinner.value = fallback;
             } else if (config.name === 'spinner_for_thermistor') {
               thermistorSpinner.value = fallback;
+            }
+
+            // Добавляем меши крутилок-заглушек
+            if (config.name === 'spinner_for_voltage_2' || config.name === 'spinner_for_thermistor') {
+              fallback.traverse((child) => {
+                if ((child as THREE.Mesh).isMesh) {
+                  const mesh = child as THREE.Mesh;
+                  if (mesh.material) {
+                    if (Array.isArray(mesh.material)) {
+                      mesh.material = mesh.material.map(mat => mat.clone());
+                    } else {
+                      mesh.material = mesh.material.clone();
+                    }
+                  }
+                  spinnerMeshes.value.push(mesh);
+                  meshToSpinnerMap.value.set(mesh, config.name === 'spinner_for_voltage_2' ? 'voltage' : 'thermistor');
+                }
+              });
             }
 
             // Если это порт, обрабатываем заглушку
@@ -1250,6 +1297,78 @@ export default defineComponent({
       }
     }
 
+    // Обработчики для крутилок
+    function handleSpinnerWheel(event: WheelEvent, spinnerType: 'voltage' | 'thermistor') {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (spinnerType === 'voltage') {
+        let newVoltage = sourceComponent.data.voltage + (event.deltaY > 0 ? -0.1 : 0.1);
+        newVoltage = Math.min(15, Math.max(0, newVoltage));
+        sourceComponent.data.voltage = parseFloat(newVoltage.toFixed(1));
+      } else if (spinnerType === 'thermistor') {
+        let newTemp = globalTemp.value + (event.deltaY > 0 ? -1 : 1);
+        newTemp = Math.min(390, Math.max(290, newTemp));
+        globalTemp.value = newTemp;
+      }
+    }
+
+    function startSpinnerDrag(spinnerType: 'voltage' | 'thermistor', clientX: number, clientY: number) {
+      activeSpinner = spinnerType;
+      isDraggingSpinner = true;
+      dragStartX = clientX;
+      dragStartY = clientY;
+      dragStartValue = spinnerType === 'voltage' ? sourceComponent.data.voltage : globalTemp.value;
+
+      // Отключаем управление камерой
+      if (controls) {
+        controls.enabled = false;
+      }
+
+      if (renderer) {
+        originalCursorStyle = renderer.domElement.style.cursor;
+        renderer.domElement.style.cursor = 'grabbing';
+      }
+    }
+
+    function onSpinnerMouseMove(event: MouseEvent) {
+      if (!isDraggingSpinner || activeSpinner === null) return;
+
+      const deltaX = event.clientX - dragStartX;
+      const deltaY = event.clientY - dragStartY;
+      // Используем сумму перемещений по X и Y (можно настроить под конкретную ось)
+      const delta = deltaX + deltaY;
+      let newValue = dragStartValue;
+
+      if (activeSpinner === 'voltage') {
+        let deltaVolts = delta / VOLTAGE_SENSITIVITY;
+        newValue = dragStartValue + deltaVolts;
+        newValue = Math.min(15, Math.max(0, newValue));
+        sourceComponent.data.voltage = parseFloat(newValue.toFixed(1));
+      } else if (activeSpinner === 'thermistor') {
+        let deltaTemp = delta / TEMP_SENSITIVITY;
+        newValue = dragStartValue + deltaTemp;
+        newValue = Math.min(390, Math.max(290, newValue));
+        globalTemp.value = Math.round(newValue);
+      }
+    }
+
+    function stopSpinnerDrag() {
+      if (isDraggingSpinner) {
+        isDraggingSpinner = false;
+        activeSpinner = null;
+
+        // Включаем управление камерой
+        if (controls) {
+          controls.enabled = true;
+        }
+
+        if (renderer) {
+          renderer.domElement.style.cursor = originalCursorStyle;
+        }
+      }
+    }
+
     // Инициализация Three.js сцены
     function initThreeJS() {
       if (!sceneContainer.value) return;
@@ -1313,6 +1432,7 @@ export default defineComponent({
       floor.receiveShadow = showShadows.value;
       scene.add(floor);
 
+      // Обработчик движения мыши (смена курсора при наведении на крутилку)
       const mouseMoveHandler = (event: MouseEvent) => {
         if (!renderer || !camera || !scene) return;
 
@@ -1325,10 +1445,20 @@ export default defineComponent({
 
         raycaster.setFromCamera(mouse, camera);
 
-        const intersects = raycaster.intersectObjects(portMeshes.value);
+        // Сначала проверяем крутилки
+        const spinnerIntersects = raycaster.intersectObjects(spinnerMeshes.value);
+        if (spinnerIntersects.length > 0) {
+          if (renderer.domElement.style.cursor !== 'grab') {
+            renderer.domElement.style.cursor = 'grab';
+          }
+          // Не сбрасываем hover порта, но и не обрабатываем дальше
+          return;
+        }
 
-        if (intersects.length > 0) {
-          const hitMesh = intersects[0]?.object as THREE.Mesh;
+        // Если не крутилка, проверяем порты
+        const portIntersects = raycaster.intersectObjects(portMeshes.value);
+        if (portIntersects.length > 0) {
+          const hitMesh = portIntersects[0]?.object as THREE.Mesh;
           const portName = meshToPortMap.value.get(hitMesh);
           if (portName) {
             if (hoveredPortName.value !== portName) {
@@ -1348,11 +1478,17 @@ export default defineComponent({
               }
               hoveredPortName.value = portName;
             }
-            return; // выход после обработки
+            if (renderer.domElement.style.cursor !== 'pointer') {
+              renderer.domElement.style.cursor = 'pointer';
+            }
+            return;
           }
         }
 
-        // Если пересечений нет или порт не найден
+        // Если пересечений нет
+        if (renderer.domElement.style.cursor !== 'default') {
+          renderer.domElement.style.cursor = 'default';
+        }
         if (hoveredPortName.value) {
           const prevPort = decorativeElementsMap.value.get(hoveredPortName.value);
           if (prevPort && firstSelectedPort.value !== hoveredPortName.value) {
@@ -1363,6 +1499,85 @@ export default defineComponent({
       };
 
       renderer.domElement.addEventListener('mousemove', mouseMoveHandler);
+
+      // Обработчик нажатия мыши для начала drag на крутилке
+      const onMouseDown = (event: MouseEvent) => {
+        if (!renderer || !camera || !scene) return;
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const spinnerIntersects = raycaster.intersectObjects(spinnerMeshes.value);
+        if (spinnerIntersects.length > 0) {
+          const hitMesh = spinnerIntersects[0]?.object as THREE.Mesh;
+          const spinnerType = meshToSpinnerMap.value.get(hitMesh);
+          if (spinnerType) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation(); // добавить эту строку
+            startSpinnerDrag(spinnerType, event.clientX, event.clientY);
+          }
+        }
+      };
+
+      // Обработчик движения мыши для drag
+      const onGlobalMouseMove = (event: MouseEvent) => {
+        if (isDraggingSpinner) {
+          event.preventDefault();
+          event.stopPropagation();
+          onSpinnerMouseMove(event);
+        }
+      };
+
+      // Обработчик отпускания мыши
+      const onGlobalMouseUp = (event: MouseEvent) => {
+        if (isDraggingSpinner) {
+          event.preventDefault();
+          event.stopPropagation();
+          stopSpinnerDrag();
+        }
+      };
+
+      // Обработчик колесика для крутилок
+      const onWheel = (event: WheelEvent) => {
+        if (!renderer || !camera || !scene) return;
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const spinnerIntersects = raycaster.intersectObjects(spinnerMeshes.value);
+        if (spinnerIntersects.length > 0) {
+          const hitMesh = spinnerIntersects[0]?.object as THREE.Mesh;
+          const spinnerType = meshToSpinnerMap.value.get(hitMesh);
+          if (spinnerType) {
+            event.preventDefault();
+            event.stopPropagation();
+            // Временно отключаем управление камерой
+            if (controls) controls.enabled = false;
+            handleSpinnerWheel(event, spinnerType);
+            // Включаем обратно после обработки (можно с задержкой, но обычно не нужно)
+            if (controls) controls.enabled = true;
+          }
+        }
+      };
+
+      renderer.domElement.addEventListener('mousedown', onMouseDown);
+      window.addEventListener('mousemove', onGlobalMouseMove);
+      window.addEventListener('mouseup', onGlobalMouseUp);
+      renderer.domElement.addEventListener('wheel', onWheel);
+
+      // Сохраняем ссылки на обработчики для очистки
+      const cleanupHandlers = {
+        onMouseDown, onGlobalMouseMove, onGlobalMouseUp, onWheel, mouseMoveHandler
+      };
 
       // Загрузчик моделей
       loader = new GLTFLoader();
@@ -1387,7 +1602,7 @@ export default defineComponent({
         initCharts();
       }, 1000);
 
-      // Обработчик клика для выделения портов, создания проводов и нажатия кнопок
+      // Обработчик клика для портов и кнопок (не для крутилок)
       const onClick = async (event: MouseEvent) => {
         if (!renderer || !camera || !scene) return;
 
@@ -1469,6 +1684,12 @@ export default defineComponent({
       };
 
       renderer.domElement.addEventListener('click', onClick);
+
+      // Сохраняем обработчики для очистки
+      (window as any).__threeCleanup = {
+        onClick,
+        ...cleanupHandlers
+      };
     }
 
     // Инициализация всех компонентов схемы
@@ -2132,9 +2353,17 @@ export default defineComponent({
         connectors.value = [];
       }
 
-      // Удаляем обработчик наведения мыши
-      if (renderer && mouseMoveHandler) {
-        renderer.domElement.removeEventListener('mousemove', mouseMoveHandler);
+      // Удаляем обработчики событий, добавленные для крутилок
+      if (renderer) {
+        const cleanup = (window as any).__threeCleanup;
+        if (cleanup) {
+          renderer.domElement.removeEventListener('mousemove', cleanup.mouseMoveHandler);
+          renderer.domElement.removeEventListener('mousedown', cleanup.onMouseDown);
+          renderer.domElement.removeEventListener('wheel', cleanup.onWheel);
+          renderer.domElement.removeEventListener('click', cleanup.onClick);
+          window.removeEventListener('mousemove', cleanup.onGlobalMouseMove);
+          window.removeEventListener('mouseup', cleanup.onGlobalMouseUp);
+        }
       }
 
       // Очищаем соединения
