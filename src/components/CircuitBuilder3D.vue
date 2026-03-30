@@ -43,7 +43,7 @@
                   v-model.number="globalTemp"
                   class="slider"
                   @wheel.prevent="handleWheelScroll"
-                  :disabled="!circuitValid"
+                  :disabled="!circuitValid || !thermistorEnabled"
               />
               <div>{{ globalTemp }} K</div>
             </div>
@@ -61,7 +61,7 @@
                         step="0.1"
                         v-model.number="sourceComponent.data.voltage"
                         class="slider"
-                        :disabled="!circuitValid"
+                        :disabled="!circuitValid || !sourceEnabled"
                     />
                     <input
                         type="number"
@@ -70,7 +70,7 @@
                         step="0.1"
                         v-model.number="sourceComponent.data.voltage"
                         class="input"
-                        :disabled="!circuitValid"
+                        :disabled="!circuitValid || !sourceEnabled"
                     />
                     <span class="param-unit">В</span>
                   </div>
@@ -85,11 +85,11 @@
               <strong>Амперметр</strong>
               <div class="component-params">
                 <div class="param-info">
-                  <div v-if="circuitValid && currentI !== null">
+                  <div v-if="circuitValid && ammeterEnabled && currentI !== null">
                     Текущий ток: {{ currentI.toFixed(4) }} А
                   </div>
                   <div v-else>
-                    Нет данных для расчёта тока
+                    Прибор выключен или нет данных для расчёта тока
                   </div>
                 </div>
               </div>
@@ -98,7 +98,7 @@
             <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px;align-items:stretch">
               <button
                   @click="saveSnapshot"
-                  :disabled="!circuitValid"
+                  :disabled="!circuitValid || !sourceEnabled || !thermistorEnabled || !ammeterEnabled"
                   class="save-button"
               >Сохранить показания</button>
               <button @click="resetValues">Сброс</button>
@@ -192,7 +192,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, onMounted, onUnmounted, ref, reactive, watch, nextTick } from 'vue';
+import { defineComponent, onMounted, onUnmounted, ref, reactive, watch, nextTick, type Ref } from 'vue';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -328,6 +328,19 @@ export default defineComponent({
     // Для расчёта delta времени
     let clock: THREE.Clock | null = null;
 
+    // Переменные для включения приборов
+    const sourceEnabled = ref(false);
+    const ammeterEnabled = ref(false);
+    const thermistorEnabled = ref(false);
+
+    // Список кликабельных элементов (кнопки и рычажок)
+    const clickableNames = ['red_button_for_ammeter', 'red_button_for_voltage_source', 'thermistor_lever'];
+    const clickableMeshes = ref<THREE.Mesh[]>([]);
+    const meshToClickableNameMap = ref<Map<THREE.Mesh, string>>(new Map());
+    // Хранилище исходных позиций для анимации утопления
+    const originalButtonPositions = ref<Map<string, THREE.Vector3>>(new Map());
+    const originalButtonRotations = ref<Map<string, THREE.Euler>>(new Map());
+
     // Функция для обновления прогресса загрузки
     function incrementLoadedModels() {
       loadedModelsCount.value++;
@@ -433,6 +446,26 @@ export default defineComponent({
             });
           }
 
+          // Обработка кликабельных кнопок/рычажков
+          if (clickableNames.includes(config.name)) {
+            model.traverse((child) => {
+              if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                if (mesh.material) {
+                  if (Array.isArray(mesh.material)) {
+                    mesh.material = mesh.material.map(mat => mat.clone());
+                  } else {
+                    mesh.material = mesh.material.clone();
+                  }
+                }
+                clickableMeshes.value.push(mesh);
+                meshToClickableNameMap.value.set(mesh, config.name);
+              }
+            });
+            originalButtonPositions.value.set(config.name, model.position.clone());
+            originalButtonRotations.value.set(config.name, model.rotation.clone());
+          }
+
           incrementLoadedModels();
 
         } catch (error) {
@@ -469,6 +502,25 @@ export default defineComponent({
                   meshToPortMap.value.set(mesh, config.name);
                 }
               });
+            }
+
+            // Для кликабельных элементов-заглушек
+            if (clickableNames.includes(config.name)) {
+              fallback.traverse((child) => {
+                if ((child as THREE.Mesh).isMesh) {
+                  const mesh = child as THREE.Mesh;
+                  if (mesh.material) {
+                    if (Array.isArray(mesh.material)) {
+                      mesh.material = mesh.material.map(mat => mat.clone());
+                    } else {
+                      mesh.material = mesh.material.clone();
+                    }
+                  }
+                  clickableMeshes.value.push(mesh);
+                  meshToClickableNameMap.value.set(mesh, config.name);
+                }
+              });
+              originalButtonPositions.value.set(config.name, fallback.position.clone());
             }
 
             incrementLoadedModels();
@@ -621,6 +673,20 @@ export default defineComponent({
         const R0 = componentData.R0 ?? 1000;
         const B = componentData.B ?? 3500;
         return R0 * Math.exp(B * (1 / T - 1 / T0));
+      }
+    }
+
+    // Возвращает сопротивление терморезистора с учётом состояния прибора и температуры
+    function getEffectiveResistance(): number {
+      if (!thermistorEnabled.value) {
+        // Если терморезистор выключен, используем T = 300K
+        const originalTemp = globalTemp.value;
+        globalTemp.value = 300;
+        const resistance = calculateCurrentResistance(thermistorComponent.data);
+        globalTemp.value = originalTemp;
+        return resistance;
+      } else {
+        return calculateCurrentResistance(thermistorComponent.data);
       }
     }
 
@@ -792,37 +858,52 @@ export default defineComponent({
     function updateAllDisplays() {
       const valid = circuitValid.value;
 
-      // Дисплей температуры на терморезисторе
+      // Дисплей температуры на терморезисторе (показываем только если терморезистор включён)
       updateDisplayText(
           thermistorDisplay.value,
-          valid ? `${globalTemp.value}` : '',
+          valid && thermistorEnabled.value ? `${globalTemp.value}` : '',
           displayConfigs.find(c => c.name === 'thermistor_display')
       );
 
-      // Дисплей напряжения на вольтметре
-      const voltage = valid ? (sourceComponent.data.voltage || 0) : 0;
+      // Дисплей напряжения на вольтметре (показываем только если вольтамперметр включён)
+      let voltageDisplayValue = '';
+      if (valid && ammeterEnabled.value) {
+        const voltage = sourceEnabled.value ? (sourceComponent.data.voltage || 0) : 0;
+        voltageDisplayValue = `${voltage.toFixed(2)}`;
+      }
       updateDisplayText(
           voltmeterDisplay.value,
-          valid ? `${voltage.toFixed(2)}` : '',
+          voltageDisplayValue,
           displayConfigs.find(c => c.name === 'voltmeter_display_top')
       );
 
-      // Дисплей тока на амперметре
-      const current = valid ? calculateCurrent() : null;
+      // Дисплей тока на амперметре (показываем только если вольтамперметр включён)
+      let currentDisplayValue = '';
+      if (valid && ammeterEnabled.value) {
+        const current = calculateCurrent();
+        if (current !== null) {
+          currentDisplayValue = `${current.toFixed(2)}`;
+        }
+      }
       updateDisplayText(
           ammeterDisplay.value,
-          valid && current !== null ? `${current.toFixed(2)}` : '',
+          currentDisplayValue,
           displayConfigs.find(c => c.name === 'ammeter_display_bottom')
       );
     }
 
     // Вычисление текущего тока в цепи
     function calculateCurrent(): number | null {
-      const V = sourceComponent.data.voltage || 0;
-      const R = calculateCurrentResistance(thermistorComponent.data);
+      // Ток отображается только если включён вольтамперметр
+      if (!circuitValid.value || !ammeterEnabled.value) return null;
+
+      // Напряжение: 0 если источник выключен, иначе установленное значение
+      const V = sourceEnabled.value ? (sourceComponent.data.voltage || 0) : 0;
+
+      // Сопротивление с учётом состояния терморезистора
+      const R = getEffectiveResistance();
 
       if (R <= 0) return 0;
-
       return V / R;
     }
 
@@ -1096,6 +1177,79 @@ export default defineComponent({
 
     const hoveredPortName = ref<string | null>(null);
 
+    // Переключение состояния прибора
+    function toggleDevice(deviceName: string) {
+      const obj = decorativeElementsMap.value.get(deviceName);
+      if (!obj) return;
+
+      // Определяем, какой прибор
+      let enabledFlag: Ref<boolean> | null = null;
+      let onToggle: (() => void) | null = null;
+
+      switch (deviceName) {
+        case 'red_button_for_voltage_source':
+          enabledFlag = sourceEnabled;
+          onToggle = () => {
+            if (!sourceEnabled.value) {
+              sourceComponent.data.voltage = 0;
+            }
+          };
+          break;
+        case 'red_button_for_ammeter':
+          enabledFlag = ammeterEnabled;
+          break;
+        case 'thermistor_lever':
+          enabledFlag = thermistorEnabled;
+          onToggle = () => {
+            if (!thermistorEnabled.value) {
+              // опционально сброс температуры
+              // globalTemp.value = 300;
+            }
+          };
+          break;
+        default:
+          return;
+      }
+
+      if (enabledFlag) {
+        const newState = !enabledFlag.value;
+        enabledFlag.value = newState;
+
+        if (onToggle) onToggle();
+
+        // Анимация позиции (общая для всех)
+        const originalPos = originalButtonPositions.value.get(deviceName);
+        if (originalPos) {
+          if (deviceName === 'thermistor_lever') {
+            // Рычажок: смещение по Y и Z
+            const offsetY = newState ? 0.025 : 0;
+            obj.position.y = originalPos.y + offsetY;
+            const offsetZ = newState ? 0.135 : 0;
+            obj.position.z = originalPos.z + offsetZ;
+          } else {
+            // Кнопки: смещение по Z (например, утопление внутрь прибора)
+            const offsetZ = newState ? -0.01 : 0;
+            obj.position.z = originalPos.z + offsetZ;
+          }
+        }
+
+        // Анимация вращения (только для рычажка)
+        if (deviceName === 'thermistor_lever') {
+          const originalRot = originalButtonRotations.value.get(deviceName);
+          if (originalRot) {
+            // Например, при включении наклоняем рычажок вниз (вращение вокруг оси X)
+            const angleOffset = newState ? -1.3 : 0; // радианы, подберите нужное значение
+            obj.rotation.x = originalRot.x + angleOffset;
+            // Можно также добавить rotation.z при необходимости
+          }
+        }
+
+        // Обновляем дисплеи и ток
+        updateAllDisplays();
+        updateCurrent();
+      }
+    }
+
     // Инициализация Three.js сцены
     function initThreeJS() {
       if (!sceneContainer.value) return;
@@ -1233,7 +1387,7 @@ export default defineComponent({
         initCharts();
       }, 1000);
 
-      // Обработчик клика для выделения портов и создания проводов
+      // Обработчик клика для выделения портов, создания проводов и нажатия кнопок
       const onClick = async (event: MouseEvent) => {
         if (!renderer || !camera || !scene) return;
 
@@ -1246,6 +1400,16 @@ export default defineComponent({
         mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
         raycaster.setFromCamera(mouse, camera);
+
+        const clickableIntersects = raycaster.intersectObjects(clickableMeshes.value);
+        if (clickableIntersects.length > 0) {
+          const hitMesh = clickableIntersects[0]?.object as THREE.Mesh;
+          const deviceName = meshToClickableNameMap.value.get(hitMesh);
+          if (deviceName) {
+            toggleDevice(deviceName);
+          }
+          return; // Не обрабатываем порты, если кликнули по кнопке
+        }
 
         // Проверяем пересечения с мешами портов
         const intersects = raycaster.intersectObjects(portMeshes.value);
@@ -1528,7 +1692,8 @@ export default defineComponent({
 
     // Сохранение измерений
     function saveSnapshot() {
-      if (!circuitValid.value || !circuitType.value) {
+      if (!circuitValid.value || !circuitType.value || !sourceEnabled.value || !thermistorEnabled.value || !ammeterEnabled.value) {
+        showPopup('Убедитесь, что все приборы включены и схема собрана верно', 'error');
         return;
       }
 
@@ -1628,6 +1793,11 @@ export default defineComponent({
       // Сбрасываем состояние проверки
       circuitValid.value = false;
       circuitType.value = null;
+
+      // Выключаем все приборы и возвращаем кнопки в исходное положение
+      if (sourceEnabled.value) toggleDevice('red_button_for_voltage_source');
+      if (ammeterEnabled.value) toggleDevice('red_button_for_ammeter');
+      if (thermistorEnabled.value) toggleDevice('thermistor_lever');
 
       updateAllDisplays();
       updateCurrent();
@@ -2008,6 +2178,11 @@ export default defineComponent({
       // Состояние проверки
       circuitValid,
       circuitType,
+
+      // Состояния включения приборов
+      sourceEnabled,
+      ammeterEnabled,
+      thermistorEnabled,
 
       // Methods
       handleWheelScroll,
