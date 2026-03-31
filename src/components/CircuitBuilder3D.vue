@@ -1260,6 +1260,13 @@ export default defineComponent({
 
       if (enabledFlag) {
         const newState = !enabledFlag.value;
+
+        // Запрещаем включение, если схема не проверена
+        if (newState && !circuitValid.value) {
+          showPopup('Нельзя включить прибор до проверки схемы', 'error');
+          return;
+        }
+
         enabledFlag.value = newState;
 
         if (onToggle) onToggle();
