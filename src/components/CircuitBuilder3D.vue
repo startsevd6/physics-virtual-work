@@ -342,6 +342,7 @@ export default defineComponent({
     const spinnerMeshes = ref<THREE.Mesh[]>([]);
     const meshToSpinnerMap = ref<Map<THREE.Mesh, 'voltage' | 'thermistor'>>(new Map());
     let activeSpinner: 'voltage' | 'thermistor' | null = null;
+    let activeSpinnerModel: THREE.Object3D | null = null; // Модель активной крутилки
     let isDraggingSpinner = false;
     let dragStartX = 0;
     let dragStartY = 0;
@@ -350,6 +351,83 @@ export default defineComponent({
     // Чувствительность: изменение значения на 1 единицу за количество пикселей
     const VOLTAGE_SENSITIVITY = 10;   // 10 пикселей = 1 В
     const TEMP_SENSITIVITY = 2;       // 2 пикселя = 1 K
+
+    // Хранение оригинальных свойств материалов для hover/active эффектов
+    const originalMaterialProps = new Map<THREE.Material, { emissive: number; color?: number }>();
+
+    // Функция для применения hover-эффекта к модели
+    function applyHoverEffect(model: THREE.Object3D, isHover: boolean) {
+      // Не применяем hover-эффект к активной крутилке (она в режиме drag)
+      if (activeSpinnerModel === model) return;
+
+      model.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          const mesh = child as THREE.Mesh;
+          if (mesh.material) {
+            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+            materials.forEach(mat => {
+              if (mat instanceof MeshStandardMaterial) {
+                if (isHover) {
+                  // Сохраняем оригинальные свойства, если ещё не сохранены
+                  if (!originalMaterialProps.has(mat)) {
+                    originalMaterialProps.set(mat, {
+                      emissive: mat.emissive.getHex(),
+                      color: mat.color.getHex()
+                    });
+                  }
+                  // Применяем эффект наведения
+                  mat.emissive.setHex(0x444444);
+                  mat.emissiveIntensity = 0.8;
+                } else {
+                  // Восстанавливаем оригинальные свойства
+                  const original = originalMaterialProps.get(mat);
+                  if (original) {
+                    mat.emissive.setHex(original.emissive);
+                    mat.emissiveIntensity = 0;
+                    // Цвет не меняем, только если нужно
+                  }
+                }
+              }
+            });
+          }
+        }
+      });
+    }
+
+    // Функция для применения active-эффекта к модели (для крутилок при перетаскивании)
+    function applyActiveEffect(model: THREE.Object3D, isActive: boolean) {
+      model.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          const mesh = child as THREE.Mesh;
+          if (mesh.material) {
+            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+            materials.forEach(mat => {
+              if (mat instanceof MeshStandardMaterial) {
+                if (isActive) {
+                  // Сохраняем оригинальные свойства, если ещё не сохранены
+                  if (!originalMaterialProps.has(mat)) {
+                    originalMaterialProps.set(mat, {
+                      emissive: mat.emissive.getHex(),
+                      color: mat.color.getHex()
+                    });
+                  }
+                  // Применяем активный эффект (яркое свечение)
+                  mat.emissive.setHex(0xff6600);
+                  mat.emissiveIntensity = 1.2;
+                } else {
+                  // Восстанавливаем оригинальные свойства
+                  const original = originalMaterialProps.get(mat);
+                  if (original) {
+                    mat.emissive.setHex(original.emissive);
+                    mat.emissiveIntensity = 0;
+                  }
+                }
+              }
+            });
+          }
+        }
+      });
+    }
 
     // Функция для обновления прогресса загрузки
     function incrementLoadedModels() {
@@ -1327,6 +1405,14 @@ export default defineComponent({
       dragStartY = clientY;
       dragStartValue = spinnerType === 'voltage' ? sourceComponent.data.voltage : globalTemp.value;
 
+      // Сохраняем модель активной крутилки
+      activeSpinnerModel = spinnerType === 'voltage' ? voltageSpinner.value : thermistorSpinner.value;
+
+      // Применяем активный эффект к крутилке
+      if (activeSpinnerModel) {
+        applyActiveEffect(activeSpinnerModel, true);
+      }
+
       // Отключаем управление камерой
       if (controls) {
         controls.enabled = false;
@@ -1362,8 +1448,14 @@ export default defineComponent({
 
     function stopSpinnerDrag() {
       if (isDraggingSpinner) {
+        // Снимаем активный эффект с крутилки
+        if (activeSpinnerModel) {
+          applyActiveEffect(activeSpinnerModel, false);
+        }
+
         isDraggingSpinner = false;
         activeSpinner = null;
+        activeSpinnerModel = null;
 
         // Включаем управление камерой
         if (controls) {
@@ -1439,7 +1531,10 @@ export default defineComponent({
       floor.receiveShadow = showShadows.value;
       scene.add(floor);
 
-      // Обработчик движения мыши (смена курсора при наведении на крутилку)
+      // Хранение текущего наведённого кликабельного элемента или крутилки для сброса hover
+      let currentHoveredModel: THREE.Object3D | null = null;
+
+      // Обработчик движения мыши (смена курсора и hover-эффекты)
       const mouseMoveHandler = (event: MouseEvent) => {
         if (!renderer || !camera || !scene) return;
 
@@ -1455,21 +1550,65 @@ export default defineComponent({
         // Сначала проверяем крутилки
         const spinnerIntersects = raycaster.intersectObjects(spinnerMeshes.value);
         if (spinnerIntersects.length > 0) {
-          if (renderer.domElement.style.cursor !== 'grab') {
-            renderer.domElement.style.cursor = 'grab';
+          const hitMesh = spinnerIntersects[0]?.object as THREE.Mesh;
+          const spinnerType = meshToSpinnerMap.value.get(hitMesh);
+          if (spinnerType) {
+            const spinnerModel = spinnerType === 'voltage' ? voltageSpinner.value : thermistorSpinner.value;
+            // Применяем hover только если модель не активна (не в процессе drag)
+            if (spinnerModel && currentHoveredModel !== spinnerModel && activeSpinnerModel !== spinnerModel) {
+              // Сбрасываем предыдущий hover
+              if (currentHoveredModel) {
+                applyHoverEffect(currentHoveredModel, false);
+              }
+              // Применяем hover к новой модели
+              applyHoverEffect(spinnerModel, true);
+              currentHoveredModel = spinnerModel;
+            }
+            if (renderer.domElement.style.cursor !== 'grab') {
+              renderer.domElement.style.cursor = 'grab';
+            }
+            return;
           }
-          // Не сбрасываем hover порта, но и не обрабатываем дальше
-          return;
         }
 
-        // Если не крутилка, проверяем порты
+        // Если не крутилка, проверяем кликабельные элементы
+        const clickableIntersects = raycaster.intersectObjects(clickableMeshes.value);
+        if (clickableIntersects.length > 0) {
+          const hitMesh = clickableIntersects[0]?.object as THREE.Mesh;
+          const deviceName = meshToClickableNameMap.value.get(hitMesh);
+          if (deviceName) {
+            const model = decorativeElementsMap.value.get(deviceName);
+            if (model && currentHoveredModel !== model && activeSpinnerModel !== model) {
+              if (currentHoveredModel) {
+                applyHoverEffect(currentHoveredModel, false);
+              }
+              applyHoverEffect(model, true);
+              currentHoveredModel = model;
+            }
+            if (renderer.domElement.style.cursor !== 'pointer') {
+              renderer.domElement.style.cursor = 'pointer';
+            }
+            return;
+          }
+        }
+
+        // Если ничего не наведено, сбрасываем hover (но не для активной крутилки)
+        if (currentHoveredModel && activeSpinnerModel !== currentHoveredModel) {
+          applyHoverEffect(currentHoveredModel, false);
+          currentHoveredModel = null;
+        } else if (currentHoveredModel && activeSpinnerModel === currentHoveredModel) {
+          // Если текущий наведённый элемент является активной крутилкой, не сбрасываем hover,
+          // но и не меняем курсор (уже 'grabbing').
+        }
+
+        // Проверяем порты для смены курсора (без hover-эффекта)
         const portIntersects = raycaster.intersectObjects(portMeshes.value);
         if (portIntersects.length > 0) {
           const hitMesh = portIntersects[0]?.object as THREE.Mesh;
           const portName = meshToPortMap.value.get(hitMesh);
           if (portName) {
             if (hoveredPortName.value !== portName) {
-              // Сброс предыдущего hover
+              // Сброс предыдущего hover порта
               if (hoveredPortName.value) {
                 const prevPort = decorativeElementsMap.value.get(hoveredPortName.value);
                 if (prevPort && firstSelectedPort.value !== hoveredPortName.value) {
