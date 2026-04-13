@@ -137,49 +137,6 @@
           </tbody>
         </table>
       </div>
-
-      <!-- Секция с графиками -->
-      <div class="charts-section">
-        <h4>Графики зависимостей</h4>
-
-        <div class="charts-container">
-          <!-- График I = f(U) при T=300K -->
-          <div class="chart-card">
-            <h5>Зависимость силы тока от напряжения I = f(U) при T=300K</h5>
-            <div class="chart-wrapper">
-              <canvas ref="uiChartCanvas" class="chart-canvas"></canvas>
-            </div>
-            <div class="chart-legend">
-              <div class="legend-item">
-                <span class="legend-color metal-color"></span>
-                <span>Металлический терморезистор</span>
-              </div>
-              <div class="legend-item">
-                <span class="legend-color semiconductor-color"></span>
-                <span>Полупроводниковый терморезистор</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- График R = f(T) -->
-          <div class="chart-card">
-            <h5>Зависимость сопротивления от температуры R = f(T)</h5>
-            <div class="chart-wrapper">
-              <canvas ref="rtChartCanvas" class="chart-canvas"></canvas>
-            </div>
-            <div class="chart-legend">
-              <div class="legend-item">
-                <span class="legend-color metal-color"></span>
-                <span>Металлический терморезистор</span>
-              </div>
-              <div class="legend-item">
-                <span class="legend-color semiconductor-color"></span>
-                <span>Полупроводниковый терморезистор</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
 
     <ErrorPopup
@@ -192,18 +149,15 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, onMounted, onUnmounted, ref, reactive, watch, nextTick, type Ref } from 'vue';
+import { defineComponent, onMounted, onUnmounted, ref, reactive, watch, type Ref } from 'vue';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshStandardMaterial, CubicBezierCurve3, TubeGeometry } from 'three';
-import { Chart, registerables } from 'chart.js';
 import NotificationPopup from './NotificationPopup.vue';
 
 // Импортируем конфигурацию из отдельного файла
 import { decorativeConfigs, modelPaths } from '../config/3d-models';
-
-Chart.register(...registerables);
 
 // Типы для 3D объектов
 type Component3D = {
@@ -224,8 +178,6 @@ export default defineComponent({
   setup() {
     // Ссылки на DOM элементы
     const sceneContainer = ref<HTMLElement | null>(null);
-    const uiChartCanvas = ref<HTMLCanvasElement | null>(null);
-    const rtChartCanvas = ref<HTMLCanvasElement | null>(null);
 
     // Three.js переменные
     let scene: THREE.Scene | null = null;
@@ -233,10 +185,6 @@ export default defineComponent({
     let renderer: THREE.WebGLRenderer | null = null;
     let controls: OrbitControls | null = null;
     let loader: GLTFLoader | null = null;
-
-    // Chart.js переменные
-    let uiChart: Chart | null = null;
-    let rtChart: Chart | null = null;
 
     // Состояние приложения
     const globalTemp = ref(300);
@@ -1040,266 +988,6 @@ export default defineComponent({
       currentI.value = calculateCurrent();
     }
 
-    // Инициализация графиков Chart.js
-    function initCharts() {
-      nextTick(() => {
-        if (uiChartCanvas.value && rtChartCanvas.value) {
-          createUIChart();
-          createRTChart();
-        }
-      });
-    }
-
-    // Создание графика I = f(U)
-    function createUIChart() {
-      if (!uiChartCanvas.value) return;
-
-      const ctx = uiChartCanvas.value.getContext('2d');
-      if (!ctx) return;
-
-      if (uiChart) {
-        uiChart.destroy();
-      }
-
-      // Фильтруем данные из таблицы сохранённых показаний
-      // Только записи с T=300 и напряжением от 2 до 4 В
-      const filteredSnapshots = snapshots.value.filter(s => {
-        return s.T === 300 && s.V >= 2 && s.V <= 4;
-      });
-
-      // Разделяем данные по типу терморезистора
-      const metalData = filteredSnapshots
-          .filter(s => s.thermistorType === 'metal')
-          .map(s => ({
-            x: parseFloat(s.V),
-            y: parseFloat(s.I || 0)
-          }));
-
-      const semiData = filteredSnapshots
-          .filter(s => s.thermistorType === 'semiconductor')
-          .map(s => ({
-            x: parseFloat(s.V),
-            y: parseFloat(s.I || 0)
-          }));
-
-      uiChart = new Chart(ctx, {
-        type: 'scatter',
-        data: {
-          datasets: [
-            {
-              label: 'Металлический терморезистор',
-              data: metalData,
-              borderColor: 'rgba(54, 162, 235, 1)',
-              backgroundColor: 'rgba(54, 162, 235, 0.1)',
-              borderWidth: 2,
-              pointRadius: 5,
-              pointHoverRadius: 7,
-              showLine: true,
-              fill: false,
-            },
-            {
-              label: 'Полупроводниковый терморезистор',
-              data: semiData,
-              borderColor: 'rgba(255, 99, 132, 1)',
-              backgroundColor: 'rgba(255, 99, 132, 0.1)',
-              borderWidth: 2,
-              pointRadius: 5,
-              pointHoverRadius: 7,
-              showLine: true,
-              fill: false,
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: 'top',
-              labels: {
-                font: {
-                  size: 12
-                }
-              }
-            },
-            tooltip: {
-              mode: 'index',
-              intersect: false,
-              callbacks: {
-                label: function(context) {
-                  let label = context.dataset.label || '';
-                  if (label) {
-                    label += ': ';
-                  }
-                  const point = context.raw as { x: number; y: number };
-                  label += `U = ${point.x?.toFixed(2)} В, I = ${point.y?.toFixed(4)} А`;
-                  return label;
-                }
-              }
-            }
-          },
-          scales: {
-            x: {
-              title: {
-                display: true,
-                text: 'Напряжение U, В',
-                font: {
-                  size: 14,
-                  weight: 'bold'
-                }
-              },
-              grid: {
-                color: 'rgba(0, 0, 0, 0.1)'
-              },
-              min: 1.5,
-              max: 4.5,
-            },
-            y: {
-              title: {
-                display: true,
-                text: 'Ток I, А',
-                font: {
-                  size: 14,
-                  weight: 'bold'
-                }
-              },
-              grid: {
-                color: 'rgba(0, 0, 0, 0.1)'
-              },
-            }
-          }
-        }
-      });
-    }
-
-    // Создание графика R = f(T)
-    function createRTChart() {
-      if (!rtChartCanvas.value) return;
-
-      const ctx = rtChartCanvas.value.getContext('2d');
-      if (!ctx) return;
-
-      if (rtChart) {
-        rtChart.destroy();
-      }
-
-      // Фильтруем данные из таблицы сохранённых показаний
-      // Только записи с напряжением от 5 до 15 В
-      const filteredSnapshots = snapshots.value.filter(s => {
-        return s.V >= 5 && s.V <= 15;
-      });
-
-      // Разделяем данные по типу терморезистора
-      const metalData = filteredSnapshots
-          .filter(s => s.thermistorType === 'metal')
-          .map(s => ({
-            x: parseFloat(s.T), // температура
-            y: parseFloat(s.R || 0) // сопротивление
-          }));
-
-      const semiData = filteredSnapshots
-          .filter(s => s.thermistorType === 'semiconductor')
-          .map(s => ({
-            x: parseFloat(s.T), // температура
-            y: parseFloat(s.R || 0) // сопротивление
-          }));
-
-      rtChart = new Chart(ctx, {
-        type: 'scatter',
-        data: {
-          datasets: [
-            {
-              label: 'Металлический терморезистор',
-              data: metalData,
-              borderColor: 'rgba(54, 162, 235, 1)',
-              backgroundColor: 'rgba(54, 162, 235, 0.1)',
-              borderWidth: 2,
-              pointRadius: 5,
-              pointHoverRadius: 7,
-              showLine: true,
-              fill: false,
-            },
-            {
-              label: 'Полупроводниковый терморезистор',
-              data: semiData,
-              borderColor: 'rgba(255, 99, 132, 1)',
-              backgroundColor: 'rgba(255, 99, 132, 0.1)',
-              borderWidth: 2,
-              pointRadius: 5,
-              pointHoverRadius: 7,
-              showLine: true,
-              fill: false,
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: 'top',
-              labels: {
-                font: {
-                  size: 12
-                }
-              }
-            },
-            tooltip: {
-              mode: 'index',
-              intersect: false,
-              callbacks: {
-                label: function(context) {
-                  let label = context.dataset.label || '';
-                  if (label) {
-                    label += ': ';
-                  }
-                  label += `R = ${context.parsed.y?.toFixed(2)} Ω, T = ${context.parsed.x} K`;
-                  return label;
-                }
-              }
-            }
-          },
-          scales: {
-            x: {
-              title: {
-                display: true,
-                text: 'Температура T, K',
-                font: {
-                  size: 14,
-                  weight: 'bold'
-                }
-              },
-              grid: {
-                color: 'rgba(0, 0, 0, 0.1)'
-              },
-              min: 280,
-              max: 400,
-            },
-            y: {
-              title: {
-                display: true,
-                text: 'Сопротивление R, Ом',
-                font: {
-                  size: 14,
-                  weight: 'bold'
-                }
-              },
-              type: 'linear',
-              grid: {
-                color: 'rgba(0, 0, 0, 0.1)'
-              }
-            }
-          }
-        }
-      });
-    }
-
-    // Функция обновления обоих графиков
-    function updateCharts() {
-      createUIChart();
-      createRTChart();
-    }
-
     const hoveredPortName = ref<string | null>(null);
 
     // Переключение состояния прибора
@@ -1743,11 +1431,6 @@ export default defineComponent({
       // Обработка изменения размера окна
       window.addEventListener('resize', onWindowResize);
 
-      // Инициализация графиков после загрузки
-      setTimeout(() => {
-        initCharts();
-      }, 1000);
-
       // Обработчик клика для портов и кнопок (не для крутилок)
       const onClick = async (event: MouseEvent) => {
         if (!renderer || !camera || !scene) return;
@@ -2031,9 +1714,6 @@ export default defineComponent({
       // Обновляем ток после добавления компонента
       updateCurrent();
 
-      // Обновляем графики после добавления компонента
-      updateCharts();
-
       return true;
     }
 
@@ -2054,7 +1734,6 @@ export default defineComponent({
       }
 
       updateCurrent();
-      updateCharts();
     }
 
     // Сохранение измерений
@@ -2080,9 +1759,6 @@ export default defineComponent({
       snapshot.I = I !== null ? I.toFixed(4) : '—';
 
       snapshots.value.unshift(snapshot);
-
-      // Автоматически обновляем графики после добавления новой записи
-      updateCharts();
     }
 
     // Функция для получения читаемого названия типа терморезистора
@@ -2100,7 +1776,6 @@ export default defineComponent({
     // Функция удаления записи из таблицы
     function deleteSnapshot(index: number) {
       snapshots.value.splice(index, 1);
-      updateCharts(); // обновить графики после удаления
     }
 
     // Сброс значений к значениям по умолчанию
@@ -2170,7 +1845,6 @@ export default defineComponent({
       updateCurrent();
       updateVoltageSpinnerRotation();
       updateThermistorSpinnerRotation();
-      updateCharts();
     }
 
     // Обработка колесика мыши для температуры
@@ -2187,7 +1861,6 @@ export default defineComponent({
 
       // Обновляем текущий ток при изменении температуры
       updateCurrent();
-      updateCharts();
     }
 
     const popup = reactive({
@@ -2417,15 +2090,6 @@ export default defineComponent({
     // Следим за изменением типа терморезистора
     watch(selectedThermistorKind, updateThermistorKind);
 
-    // Следим за изменением параметров для обновления графиков
-    watch(() => thermistorComponent.data, () => {
-      updateCharts();
-    }, { deep: true });
-
-    watch(() => sourceComponent.data.voltage, () => {
-      updateCharts();
-    });
-
     // При изменении соединений сбрасываем статус проверки
     watch(connections, () => {
       circuitValid.value = false;
@@ -2517,21 +2181,11 @@ export default defineComponent({
 
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
-
-      // Уничтожаем графики
-      if (uiChart) {
-        uiChart.destroy();
-      }
-      if (rtChart) {
-        rtChart.destroy();
-      }
     });
 
     return {
       // Refs
       sceneContainer,
-      uiChartCanvas,
-      rtChartCanvas,
       globalTemp,
       popup,
       snapshots,
@@ -2969,88 +2623,9 @@ strong, div {
   margin-bottom: 0;
 }
 
-.charts-section {
-  background: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  margin-top: 20px;
-}
-
-.charts-section h4 {
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 2px solid #e5e7eb;
-}
-
-.charts-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-  grid-template-rows: 1fr;
-  gap: 24px;
-}
-
-.chart-card {
-  background: #f9fafb;
-  border-radius: 8px;
-  padding: 20px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
-
-.chart-card h5 {
-  margin-bottom: 16px;
-  color: #374151;
-  font-size: 16px;
-  text-align: center;
-}
-
-.chart-wrapper {
-  position: relative;
-  height: 70%;
-  width: 100%;
-}
-
-.chart-canvas {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-.chart-legend {
-  display: flex;
-  justify-content: center;
-  gap: 24px;
-  margin-top: 16px;
-  flex-wrap: wrap;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: #4b5563;
-}
-
-.legend-color {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-}
-
-.metal-color {
-  background-color: rgba(54, 162, 235, 1);
-}
-
-.semiconductor-color {
-  background-color: rgba(255, 99, 132, 1);
-}
-
 .snapshots-table {
   margin: 16px 0;
   overflow-x: auto;
-  overflow-y: scroll;
-  height: 30%;
 }
 
 .snapshots-table table {
@@ -3172,10 +2747,6 @@ button.save-button:enabled:active {
   /*.scene-section {
     width: 100%;
   }*/
-
-  .charts-container {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 900px) {
@@ -3202,14 +2773,6 @@ button.save-button:enabled:active {
   .param-row,
   .param-controls {
     flex-direction: column;
-  }
-
-  .charts-container {
-    grid-template-columns: 1fr;
-  }
-
-  .chart-wrapper {
-    height: 250px;
   }
 }
 </style>
