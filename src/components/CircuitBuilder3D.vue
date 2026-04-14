@@ -103,6 +103,8 @@
               >Сохранить показания</button>
               <button @click="resetValues">Сброс</button>
               <button @click="checkCircuit">Проверить схему</button>
+              <!-- Новая кнопка удаления всех проводов -->
+              <button @click="deleteAllWires" style="background: #ef4444;">Удалить провода</button>
             </div>
           </div>
         </div>
@@ -149,7 +151,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, onMounted, onUnmounted, ref, reactive, watch, type Ref } from 'vue';
+import { defineComponent, onMounted, onUnmounted, reactive, ref, type Ref, watch } from 'vue';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -252,7 +254,13 @@ export default defineComponent({
 
     // Для хранения созданных проводов, коннекторов и состояния выбора первого порта
     const wires = ref<THREE.Mesh[]>([]);
-    const connectors = ref<Array<{ wire: THREE.Mesh, connector1: THREE.Object3D, connector2: THREE.Object3D }>>([]);
+    const connectors = ref<Array<{
+      wire: THREE.Mesh,
+      connector1: THREE.Object3D,
+      connector2: THREE.Object3D,
+      port1: string,
+      port2: string
+    }>>([]);
     const firstSelectedPort = ref<string | null>(null);
 
     // Массив соединений (какие порты соединены)
@@ -1156,6 +1164,133 @@ export default defineComponent({
       }
     }
 
+    // Удаление конкретного провода по объекту меша
+    function deleteWire(wireMesh: THREE.Mesh) {
+      if (!scene) return;
+
+      // Находим провод в массиве (это может быть сам провод или его часть)
+      const wireIndex = wires.value.findIndex(w => w === wireMesh);
+      if (wireIndex === -1) {
+        console.warn('Провод не найден в массиве wires');
+        return;
+      }
+
+      const connectorData = connectors.value.find(c => c.wire === wireMesh);
+      if (!connectorData) {
+        console.warn('Коннекторы для провода не найдены');
+        return;
+      }
+
+      // Удаляем из родительского объекта (не из scene напрямую)
+      const removeFromParent = (obj: THREE.Object3D) => {
+        if (obj.parent) {
+          obj.parent.remove(obj);
+        } else {
+          scene!.remove(obj);
+        }
+      };
+
+      removeFromParent(wireMesh);
+      removeFromParent(connectorData.connector1);
+      removeFromParent(connectorData.connector2);
+
+      // Очистка памяти
+      if (wireMesh.geometry) wireMesh.geometry.dispose();
+      if (wireMesh.material) {
+        if (Array.isArray(wireMesh.material)) {
+          wireMesh.material.forEach(m => m.dispose());
+        } else {
+          wireMesh.material.dispose();
+        }
+      }
+
+      [connectorData.connector1, connectorData.connector2].forEach(conn => {
+        conn.traverse((obj: any) => {
+          if (obj.isMesh) {
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) {
+              if (Array.isArray(obj.material)) {
+                obj.material.forEach((m: any) => m.dispose());
+              } else {
+                obj.material.dispose();
+              }
+            }
+          }
+        });
+      });
+
+      // Удаляем из логических массивов
+      wires.value.splice(wireIndex, 1);
+      const connIndex = connectors.value.findIndex(c => c.wire === wireMesh);
+      if (connIndex !== -1) connectors.value.splice(connIndex, 1);
+
+      // Удаляем соединение
+      const { port1, port2 } = connectorData;
+      const connectionIndex = connections.value.findIndex(conn =>
+          (conn.port1 === port1 && conn.port2 === port2) ||
+          (conn.port1 === port2 && conn.port2 === port1)
+      );
+      if (connectionIndex !== -1) connections.value.splice(connectionIndex, 1);
+
+      // Сброс выделения
+      if (firstSelectedPort.value) {
+        highlightPort(null);
+        firstSelectedPort.value = null;
+      }
+      if (hoveredPortName.value) {
+        const prevPort = decorativeElementsMap.value.get(hoveredPortName.value);
+        if (prevPort) setPortEmissive(prevPort, 0x000000);
+        hoveredPortName.value = null;
+      }
+
+      circuitValid.value = false;
+      circuitType.value = null;
+
+      // Принудительный рендер
+      if (renderer && scene && camera) {
+        renderer.render(scene, camera);
+      }
+    }
+
+    // Функция удаления всех проводов
+    function deleteAllWires() {
+      if (!scene) return;
+
+      // Удаляем все объекты с userData.type = 'wire' или 'connector'
+      const objectsToRemove: THREE.Object3D[] = [];
+      scene.traverse((obj) => {
+        if (obj.userData.type === 'wire' || obj.userData.type === 'connector') {
+          objectsToRemove.push(obj);
+        }
+      });
+      objectsToRemove.forEach(obj => {
+        scene?.remove(obj);
+        // Освобождаем ресурсы
+        if ((obj as THREE.Mesh).isMesh) {
+          const mesh = obj as THREE.Mesh;
+          if (mesh.geometry) mesh.geometry.dispose();
+          if (mesh.material) {
+            if (Array.isArray(mesh.material)) {
+              mesh.material.forEach(m => m.dispose());
+            } else {
+              mesh.material.dispose();
+            }
+          }
+        }
+      });
+
+      // Очищаем массивы
+      wires.value = [];
+      connectors.value = [];
+      connections.value = [];
+
+      // Сбрасываем состояние проверки и выделение порта
+      circuitValid.value = false;
+      circuitType.value = null;
+      firstSelectedPort.value = null;
+      highlightPort(null);
+    }
+
     // Инициализация Three.js сцены
     function initThreeJS() {
       if (!sceneContainer.value) return;
@@ -1319,6 +1454,13 @@ export default defineComponent({
           }
         }
 
+        // Проверяем провода для возможного удаления (курсор меняется)
+        const wireIntersects = raycaster.intersectObjects(wires.value);
+        if (wireIntersects.length > 0) {
+          renderer.domElement.style.cursor = 'pointer';
+          return;
+        }
+
         // Если пересечений нет
         if (renderer.domElement.style.cursor !== 'default') {
           renderer.domElement.style.cursor = 'default';
@@ -1431,7 +1573,7 @@ export default defineComponent({
       // Обработка изменения размера окна
       window.addEventListener('resize', onWindowResize);
 
-      // Обработчик клика для портов и кнопок (не для крутилок)
+      // Обработчик клика для портов, кнопок и проводов (удаление)
       const onClick = async (event: MouseEvent) => {
         if (!renderer || !camera || !scene) return;
 
@@ -1499,7 +1641,19 @@ export default defineComponent({
             highlightPort(null);
           }
         } else {
-          // Клик не по порту - снимаем выделение и сбрасываем hover
+          // Проверяем клик по проводу для удаления
+          const wireIntersects = raycaster.intersectObjects(wires.value);
+          if (wireIntersects.length > 0) {
+            let wireObject = wireIntersects[0]?.object as THREE.Mesh;
+            while (wireObject && wireObject.userData.type !== 'wire' && wireObject.parent) {
+              wireObject = wireObject.parent as THREE.Mesh;
+            }
+            if (wireObject && wireObject.userData.type === 'wire') {
+              deleteWire(wireObject as THREE.Mesh);
+            }
+          }
+
+          // Клик не по порту и не по проводу - снимаем выделение и сбрасываем hover
           firstSelectedPort.value = null;
           highlightPort(null);
 
@@ -1801,40 +1955,8 @@ export default defineComponent({
       firstSelectedPort.value = null;
       highlightPort(null);
 
-      // Удаляем все провода и коннекторы из сцены
-      if (scene) {
-        // Удаляем все объекты с userData.type = 'wire' или 'connector'
-        const objectsToRemove: THREE.Object3D[] = [];
-        scene.traverse((obj) => {
-          if (obj.userData.type === 'wire' || obj.userData.type === 'connector') {
-            objectsToRemove.push(obj);
-          }
-        });
-        objectsToRemove.forEach(obj => {
-          scene?.remove(obj);
-          // Освобождаем ресурсы (геометрии, материалы)
-          if ((obj as THREE.Mesh).isMesh) {
-            const mesh = obj as THREE.Mesh;
-            if (mesh.geometry) mesh.geometry.dispose();
-            if (mesh.material) {
-              if (Array.isArray(mesh.material)) {
-                mesh.material.forEach(m => m.dispose());
-              } else {
-                mesh.material.dispose();
-              }
-            }
-          }
-        });
-      }
-
-      // Очищаем список соединений
-      wires.value = [];
-      connectors.value = [];
-      connections.value = [];
-
-      // Сбрасываем состояние проверки
-      circuitValid.value = false;
-      circuitType.value = null;
+      // Удаляем все провода
+      deleteAllWires();
 
       // Выключаем все приборы и возвращаем кнопки в исходное положение
       if (sourceEnabled.value) toggleDevice('red_button_for_voltage_source');
@@ -1977,9 +2099,16 @@ export default defineComponent({
 
       scene.add(wire);
 
+      connectors.value.push({
+        wire,
+        connector1,
+        connector2,
+        port1: portName1,
+        port2: portName2
+      });
+
       // Сохраняем всё
       wires.value.push(wire);
-      connectors.value.push({ wire, connector1, connector2 });
 
       // Сохраняем соединение
       connections.value.push({ port1: portName1, port2: portName2 });
@@ -2131,37 +2260,7 @@ export default defineComponent({
       });
 
       // Удаляем все провода
-      if (scene) {
-        wires.value.forEach(wire => {
-          scene?.remove(wire);
-          if (wire.geometry) wire.geometry.dispose();
-          if (wire.material) {
-            if (Array.isArray(wire.material)) {
-              wire.material.forEach(m => m.dispose());
-            } else {
-              wire.material.dispose();
-            }
-          }
-        });
-        wires.value = [];
-
-        // Удаляем коннекторы
-        connectors.value.forEach(item => {
-          scene?.remove(item.connector1);
-          scene?.remove(item.connector2);
-          // Очистка ресурсов
-          [item.connector1, item.connector2].forEach(conn => {
-            conn.traverse((obj: any) => {
-              if (obj.geometry) obj.geometry.dispose();
-              if (obj.material) {
-                if (Array.isArray(obj.material)) obj.material.forEach((m: any) => m.dispose());
-                else obj.material.dispose();
-              }
-            });
-          });
-        });
-        connectors.value = [];
-      }
+      deleteAllWires();
 
       // Удаляем обработчики событий, добавленные для крутилок
       if (renderer) {
@@ -2222,6 +2321,7 @@ export default defineComponent({
       getThermistorTypeLabel,
       deleteSnapshot,
       checkCircuit,
+      deleteAllWires,
     };
   }
 });
