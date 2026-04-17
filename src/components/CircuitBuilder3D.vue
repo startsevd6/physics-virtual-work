@@ -116,10 +116,15 @@
                   :disabled="!circuitValid || !sourceEnabled || !thermistorEnabled || !ammeterEnabled"
                   class="save-button"
               >Сохранить показания</button>
-              <button @click="resetValues">Сброс</button>
-              <button @click="checkCircuit">Проверить схему</button>
-              <button @click="deleteAllWires" style="background: #ef4444;">Удалить провода</button>
+
               <button @click="showSnapshotsModal = true" style="background: #3b82f6;">Сохранённые показания</button>
+
+              <div style="display: flex; gap: 8px;">
+                <button @click="resetValues" style="flex: 1;">Сброс</button>
+                <button @click="deleteAllWires" style="flex: 1; background: #ef4444;">Удалить провода</button>
+              </div>
+
+              <button @click="checkCircuit">Проверить схему</button>
             </div>
           </div>
         </div>
