@@ -855,6 +855,17 @@ export default defineComponent({
         height: 0.7,
         fontSize: 80,
         color: "#FF1616"
+      },
+      // Дисплей режима на генераторе
+      {
+        name: 'generator_display_bottom',
+        position: new THREE.Vector3(-0.396, 0.049, 0.581),
+        rotation: new THREE.Euler(0, 0, 0),
+        scale: 0.1,
+        width: 0.35,
+        height: 0.175,
+        fontSize: 80,
+        color: "#FF1616"
       }
     ];
 
@@ -862,6 +873,7 @@ export default defineComponent({
     const thermistorDisplay = ref<THREE.Mesh | null>(null);
     const voltmeterDisplay = ref<THREE.Mesh | null>(null);
     const ammeterDisplay = ref<THREE.Mesh | null>(null);
+    const generatorDisplay = ref<THREE.Mesh | null>(null);
 
     // Функция для создания текстовой плоскости
     function createTextDisplay(config: any): THREE.Mesh {
@@ -981,6 +993,8 @@ export default defineComponent({
           voltmeterDisplay.value = display;
         } else if (config.name === 'ammeter_display_bottom') {
           ammeterDisplay.value = display;
+        } else if (config.name === 'generator_display_bottom') {
+          generatorDisplay.value = display;
         }
       });
     }
@@ -1020,6 +1034,13 @@ export default defineComponent({
           ammeterDisplay.value,
           currentDisplayValue,
           displayConfigs.find(c => c.name === 'ammeter_display_bottom')
+      );
+
+      // Дисплей генератора (показывает "0" при включённом источнике)
+      updateDisplayText(
+          generatorDisplay.value,
+          valid && sourceEnabled.value ? '0' : '',
+          displayConfigs.find(c => c.name === 'generator_display_bottom')
       );
     }
 
@@ -2359,7 +2380,7 @@ export default defineComponent({
       decorativeElements.value = [];
 
       // Очищаем дисплеи
-      [thermistorDisplay.value, voltmeterDisplay.value, ammeterDisplay.value].forEach(display => {
+      [thermistorDisplay.value, voltmeterDisplay.value, ammeterDisplay.value, generatorDisplay.value].forEach(display => {
         if (display && scene && display.parent === scene) {
           scene.remove(display);
           if (display.material) {
