@@ -2206,9 +2206,18 @@ export default defineComponent({
       const connector1 = connectorModel.clone();
       const connector2 = connectorModel.clone();
 
+      // Клонируем материалы для каждого коннектора, чтобы избежать общих ссылок
       [connector1, connector2].forEach(conn => {
         conn.traverse(child => {
           if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            if (mesh.material) {
+              if (Array.isArray(mesh.material)) {
+                mesh.material = mesh.material.map(mat => mat.clone());
+              } else {
+                mesh.material = mesh.material.clone();
+              }
+            }
             child.castShadow = showShadows.value;
             child.receiveShadow = showShadows.value;
           }
