@@ -34,18 +34,35 @@
           <h4>Компоненты схемы</h4>
           <div class="current-components">
             <!-- Температурный регулятор -->
-            <div class="slot-info temperature-control">
-              <label><strong>Температура (K)</strong></label>
-              <input
-                  type="range"
-                  min="290"
-                  max="390"
-                  v-model.number="globalTemp"
-                  class="slider"
-                  @wheel.prevent="handleWheelScroll"
-                  :disabled="!circuitValid || !thermistorEnabled"
-              />
-              <div>{{ globalTemp }} K</div>
+            <div class="slot-info">
+              <strong>Температура</strong>
+              <div class="component-params">
+                <div class="param-row">
+                  <label>Температура:</label>
+                  <div class="param-controls">
+                    <input
+                        type="range"
+                        min="290"
+                        max="390"
+                        step="1"
+                        v-model.number="globalTemp"
+                        class="slider"
+                        :disabled="!circuitValid || !thermistorEnabled"
+                        @wheel.prevent="handleTemperatureWheel"
+                    />
+                    <input
+                        type="number"
+                        min="290"
+                        max="390"
+                        step="1"
+                        v-model.number="globalTemp"
+                        class="input"
+                        :disabled="!circuitValid || !thermistorEnabled"
+                    />
+                    <span class="param-unit">K</span>
+                  </div>
+                </div>
+              </div>
             </div>
             <!-- Источник напряжения -->
             <div class="slot-info">
@@ -62,6 +79,7 @@
                         v-model.number="sourceComponent.data.voltage"
                         class="slider"
                         :disabled="!circuitValid || !sourceEnabled"
+                        @wheel.prevent="handleVoltageWheel"
                     />
                     <input
                         type="number"
@@ -75,9 +93,6 @@
                     <span class="param-unit">В</span>
                   </div>
                 </div>
-                <div class="voltage-value">
-                  Текущее значение: {{ sourceComponent.data.voltage || 0 }} В
-                </div>
               </div>
             </div>
             <!-- Амперметр -->
@@ -89,7 +104,7 @@
                     Текущий ток: {{ currentI.toFixed(4) }} А
                   </div>
                   <div v-else>
-                    Прибор выключен или нет данных для расчёта тока
+                    Прибор выключен
                   </div>
                 </div>
               </div>
@@ -2099,20 +2114,26 @@ export default defineComponent({
       updateThermistorSpinnerRotation();
     }
 
-    // Обработка колесика мыши для температуры
-    function handleWheelScroll(event: WheelEvent) {
+    // Обработка колеса для температуры
+    function handleTemperatureWheel(event: WheelEvent) {
+      if (!circuitValid.value || !thermistorEnabled.value) return;
+
       const delta = Math.sign(event.deltaY) * -1;
       const step = 1;
-
-      let newTemp = globalTemp.value + (delta * step);
-      if (newTemp < 290) newTemp = 290;
-      if (newTemp > 390) newTemp = 390;
-
+      let newTemp = globalTemp.value + delta * step;
+      newTemp = Math.min(390, Math.max(290, newTemp));
       globalTemp.value = newTemp;
-      event.preventDefault();
+    }
 
-      // Обновляем текущий ток при изменении температуры
-      updateCurrent();
+    // Обработка колеса для напряжения
+    function handleVoltageWheel(event: WheelEvent) {
+      if (!circuitValid.value || !sourceEnabled.value) return;
+
+      const delta = Math.sign(event.deltaY) * -1; // направление: вверх = увеличение
+      const step = 0.1;
+      let newVoltage = sourceComponent.data.voltage + delta * step;
+      newVoltage = Math.min(15, Math.max(0, newVoltage));
+      sourceComponent.data.voltage = parseFloat(newVoltage.toFixed(1));
     }
 
     const popup = reactive({
@@ -2451,7 +2472,8 @@ export default defineComponent({
       thermistorEnabled,
 
       // Methods
-      handleWheelScroll,
+      handleVoltageWheel,
+      handleTemperatureWheel,
       saveSnapshot,
       resetValues,
       //calculateCurrentResistance,
@@ -2696,12 +2718,6 @@ strong, div {
   cursor: pointer;
 }
 
-.temperature-control {
-  padding: 16px;
-  background: #f8fafc;
-  border-radius: 6px;
-}
-
 .temperature-control label {
   display: block;
   margin-bottom: 8px;
@@ -2753,7 +2769,6 @@ strong, div {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
   gap: 10px;
 }
 
@@ -2831,16 +2846,6 @@ strong, div {
   font-size: 14px;
   color: #6b7280;
   min-width: 20px;
-}
-
-.voltage-value {
-  margin-top: 8px;
-  padding: 8px;
-  background: #f3f4f6;
-  border-radius: 4px;
-  font-size: 14px;
-  text-align: center;
-  color: #374151;
 }
 
 .param-info {
