@@ -118,43 +118,20 @@
               >Сохранить показания</button>
               <button @click="resetValues">Сброс</button>
               <button @click="checkCircuit">Проверить схему</button>
-              <!-- Новая кнопка удаления всех проводов -->
               <button @click="deleteAllWires" style="background: #ef4444;">Удалить провода</button>
+              <button @click="showSnapshotsModal = true" style="background: #3b82f6;">Сохранённые показания</button>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="readings-container">
-      <h4>Сохранённые показания</h4>
-      <div class="snapshots-table">
-        <table>
-          <thead>
-          <tr>
-            <th>Напряжение (В)</th>
-            <th>Ток (А)</th>
-            <th>Сопротивление (Ом)</th>
-            <th>Температура (K)</th>
-            <th>Тип терморезистора</th>
-            <th>Действия</th>
-          </tr>
-          </thead>
-          <tbody>
-          <tr v-for="(s,i) in snapshots" :key="i">
-            <td>{{ s.V }}</td>
-            <td>{{ s.I || '—' }}</td>
-            <td>{{ s.R || '—' }}</td>
-            <td>{{ s.T }}</td>
-            <td>{{ getThermistorTypeLabel(s.thermistorType) }}</td>
-            <td>
-              <button class="delete-btn" @click="deleteSnapshot(i)" title="Удалить запись">x</button>
-            </td>
-          </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <SnapshotsModal
+        v-model="showSnapshotsModal"
+        :snapshots="snapshots"
+        :getThermistorTypeLabel="getThermistorTypeLabel"
+        @delete="deleteSnapshot"
+    />
 
     <ErrorPopup
         v-if="popup.visible"
@@ -172,6 +149,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshStandardMaterial, CubicBezierCurve3, TubeGeometry, Object3D } from 'three';
 import NotificationPopup from './NotificationPopup.vue';
+import SnapshotsModal from './SnapshotsModal.vue';
 
 // Импортируем конфигурацию из отдельного файла
 import { decorativeConfigs, modelPaths } from '../config/3d-models';
@@ -190,6 +168,7 @@ export default defineComponent({
   name: 'CircuitBuilder3D',
   components: {
     ErrorPopup: NotificationPopup,
+    SnapshotsModal,
   },
 
   setup() {
@@ -334,6 +313,9 @@ export default defineComponent({
 
     // ref для отслеживания наведения на крутилку
     const isHoveringSpinner = ref(false);
+
+    // Состояние открытия модального окна с сохранёнными показаниями
+    const showSnapshotsModal = ref(false);
 
     // Функция для применения hover-эффекта к модели
     function applyHoverEffect(model: THREE.Object3D, isHover: boolean) {
@@ -2477,6 +2459,7 @@ export default defineComponent({
       sourceComponent,
       thermistorComponent,
       keysPressed,
+      showSnapshotsModal,
 
       // Состояние загрузки
       isLoading,
@@ -2531,9 +2514,6 @@ strong, div {
 
   height: calc(100vh - 100px);
   margin-top: 100px;
-  overflow-y: scroll;
-  scroll-snap-type: y mandatory;
-  scroll-padding: 30px;
 
   display: flex;
   flex-direction: column;
@@ -2542,14 +2522,7 @@ strong, div {
   opacity: 0;
   transform: translateY(40px);
   transition: opacity 0.6s ease-out 0.4s, transform 0.6s ease-out 0.4s;
-
-  /*
-  overflow-y: scroll;
-  scroll-snap-type: y mandatory;
-  scroll-padding: 100px;
-  */
 }
-
 
 .header--loaded ~ .content {
   opacity: 1;
@@ -2562,18 +2535,6 @@ strong, div {
   scroll-snap-align: start;
   display: flex;
   gap: 20px;
-}
-
-.readings-container {
-  min-height: calc(100vh - 160px);
-  scroll-snap-align: start;
-
-  background: #fff;
-  border-radius: 8px;
-  padding: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-
-  overflow-y: auto;
 }
 
 /*.controls-panel {
@@ -2888,11 +2849,6 @@ strong, div {
   margin-bottom: 0;
 }
 
-.snapshots-table {
-  margin: 16px 0;
-  overflow-x: auto;
-}
-
 .snapshots-table table {
   width: 100%;
   border-collapse: collapse;
@@ -2913,26 +2869,6 @@ strong, div {
 
 .snapshots-table tbody tr:hover {
   background: #f3f4f6;
-}
-
-.delete-btn {
-  color: #dc2626;
-  border: none;
-  font-size: 18px;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: background 0.2s;
-  background: #fefefe !important;
-}
-
-.delete-btn:hover {
-  background: #fee2e2 !important;
-  transform: none;
-}
-
-.delete-btn:active {
-  background: #fecaca !important;
 }
 
 button {
@@ -2985,6 +2921,13 @@ button.save-button:enabled:hover {
 
 button.save-button:enabled:active {
   transform: translateY(0);
+}
+
+/* Анимация модального окна */
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #1f2937;
 }
 
 @media (max-width: 1900px) {
