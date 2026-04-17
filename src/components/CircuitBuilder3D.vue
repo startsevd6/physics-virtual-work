@@ -155,7 +155,7 @@ import { defineComponent, onMounted, onUnmounted, reactive, ref, type Ref, watch
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MeshStandardMaterial, CubicBezierCurve3, TubeGeometry } from 'three';
+import { MeshStandardMaterial, CubicBezierCurve3, TubeGeometry, Object3D } from 'three';
 import NotificationPopup from './NotificationPopup.vue';
 
 // Импортируем конфигурацию из отдельного файла
@@ -314,6 +314,9 @@ export default defineComponent({
     // Массив для хранения всех созданных коннекторов (для рейкастинга и удаления)
     const connectorMeshes = ref<THREE.Object3D[]>([]);
 
+    // Текущее подсвеченное соединение (провод + оба коннектора)
+    let currentHoveredConnection: typeof connectors.value[0] | null = null;
+
     // Функция для применения hover-эффекта к модели
     function applyHoverEffect(model: THREE.Object3D, isHover: boolean) {
       // Не применяем hover-эффект к активной крутилке (она в режиме drag)
@@ -385,6 +388,50 @@ export default defineComponent({
             });
           }
         }
+      });
+    }
+
+    // Применение hover ко всей группе (провод + оба коннектора)
+    function applyConnectionHoverEffect(connection: typeof connectors.value[0], isHover: boolean) {
+      if (!connection) return;
+      // Применяем к проводу
+      if (connection.wire && connection.wire.material) {
+        const materials = Array.isArray(connection.wire.material) ? connection.wire.material : [connection.wire.material];
+        materials.forEach(mat => {
+          if ((mat as any).isMeshStandardMaterial) {
+            const stdMat = mat as MeshStandardMaterial;
+            if (isHover) {
+              stdMat.emissive.setHex(0x333333);
+              stdMat.emissiveIntensity = 0.6;
+            } else {
+              stdMat.emissive.setHex(0x000000);
+              stdMat.emissiveIntensity = 0;
+            }
+          }
+        });
+      }
+      // Применяем к коннекторам
+      [connection.connector1, connection.connector2].forEach(conn => {
+        if (!conn) return;
+        conn.traverse(child => {
+          if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            if (mesh.material) {
+              const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+              materials.forEach(mat => {
+                if (mat instanceof MeshStandardMaterial) {
+                  if (isHover) {
+                    mat.emissive.setHex(0x666666);
+                    mat.emissiveIntensity = 0.5;
+                  } else {
+                    mat.emissive.setHex(0x000000);
+                    mat.emissiveIntensity = 0;
+                  }
+                }
+              });
+            }
+          }
+        });
       });
     }
 
@@ -1184,6 +1231,12 @@ export default defineComponent({
         return;
       }
 
+      // Сброс hover перед удалением
+      if (currentHoveredConnection === connectorData) {
+        applyConnectionHoverEffect(currentHoveredConnection, false);
+        currentHoveredConnection = null;
+      }
+
       // Удаляем из родительского объекта (не из scene напрямую)
       const removeFromParent = (obj: THREE.Object3D) => {
         if (obj.parent) {
@@ -1263,6 +1316,12 @@ export default defineComponent({
     // Функция удаления всех проводов
     function deleteAllWires() {
       if (!scene) return;
+
+      // Сброс hover перед удалением
+      if (currentHoveredConnection) {
+        applyConnectionHoverEffect(currentHoveredConnection, false);
+        currentHoveredConnection = null;
+      }
 
       // Удаляем все объекты с userData.type = 'wire' или 'connector'
       const objectsToRemove: THREE.Object3D[] = [];
@@ -1424,6 +1483,42 @@ export default defineComponent({
           }
         }
 
+        // Проверяем провода и коннекторы для группового hover
+        const allWireAndConnectorObjects = [...wires.value, ...connectorMeshes.value];
+        const intersects = raycaster.intersectObjects(allWireAndConnectorObjects);
+        if (intersects.length > 0) {
+          let hitObject: Object3D | null | undefined = intersects[0]?.object;
+          // Поднимаемся по родителям, чтобы найти корневой объект (wire или connector)
+          while (hitObject && hitObject.userData.type !== 'wire' && hitObject.userData.type !== 'connector') {
+            hitObject = hitObject.parent;
+          }
+          if (hitObject) {
+            let foundConnection: typeof connectors.value[0] | null = null;
+            for (const conn of connectors.value) {
+              if (conn.wire === hitObject || conn.connector1 === hitObject || conn.connector2 === hitObject) {
+                foundConnection = conn;
+                break;
+              }
+            }
+            if (foundConnection) {
+              if (currentHoveredConnection !== foundConnection) {
+                if (currentHoveredConnection) {
+                  applyConnectionHoverEffect(currentHoveredConnection, false);
+                }
+                currentHoveredConnection = foundConnection;
+                applyConnectionHoverEffect(currentHoveredConnection, true);
+              }
+              if (renderer.domElement.style.cursor !== 'pointer') {
+                renderer.domElement.style.cursor = 'pointer';
+              }
+              return;
+            }
+          }
+        } else if (currentHoveredConnection) {
+          applyConnectionHoverEffect(currentHoveredConnection, false);
+          currentHoveredConnection = null;
+        }
+
         // Если ничего не наведено, сбрасываем hover (но не для активной крутилки)
         if (currentHoveredModel && activeSpinnerModel !== currentHoveredModel) {
           applyHoverEffect(currentHoveredModel, false);
@@ -1461,20 +1556,6 @@ export default defineComponent({
             }
             return;
           }
-        }
-
-        // Проверяем провода для возможного удаления (курсор меняется)
-        const wireIntersects = raycaster.intersectObjects(wires.value);
-        if (wireIntersects.length > 0) {
-          renderer.domElement.style.cursor = 'pointer';
-          return;
-        }
-
-        // Проверяем коннекторы
-        const connectorIntersects = raycaster.intersectObjects(connectorMeshes.value);
-        if (connectorIntersects.length > 0) {
-          renderer.domElement.style.cursor = 'pointer';
-          return;
         }
 
         // Если пересечений нет
@@ -1657,33 +1738,25 @@ export default defineComponent({
             highlightPort(null);
           }
         } else {
-          // Проверяем клик по проводу для удаления
-          const wireIntersects = raycaster.intersectObjects(wires.value);
-          if (wireIntersects.length > 0) {
-            let wireObject = wireIntersects[0]?.object as THREE.Mesh;
-            while (wireObject && wireObject.userData.type !== 'wire' && wireObject.parent) {
-              wireObject = wireObject.parent as THREE.Mesh;
-            }
-            if (wireObject && wireObject.userData.type === 'wire') {
-              deleteWire(wireObject as THREE.Mesh);
-            }
-            return;
-          }
-
-          // Проверяем клик по коннектору
-          const connectorIntersects = raycaster.intersectObjects(connectorMeshes.value);
-          if (connectorIntersects.length > 0) {
-            let hitObject: THREE.Object3D | null = connectorIntersects[0]?.object || null;
-            // Поднимаемся по родителям, пока не найдем объект с userData.type === 'connector'
-            while (hitObject && hitObject.userData.type !== 'connector') {
+          // Проверяем клик по проводу или коннектору для удаления
+          const allWireAndConnectorObjects = [...wires.value, ...connectorMeshes.value];
+          const wireConnectorIntersects = raycaster.intersectObjects(allWireAndConnectorObjects);
+          if (wireConnectorIntersects.length > 0) {
+            let hitObject: Object3D | null | undefined = wireConnectorIntersects[0]?.object;
+            // Поднимаемся по родителям, чтобы найти корневой объект (wire или connector)
+            while (hitObject && hitObject.userData.type !== 'wire' && hitObject.userData.type !== 'connector') {
               hitObject = hitObject.parent;
             }
             if (hitObject) {
-              const connectorEntry = connectors.value.find(
-                  c => c.connector1 === hitObject || c.connector2 === hitObject
-              );
-              if (connectorEntry) {
-                deleteWire(connectorEntry.wire);
+              let connectionToDelete: typeof connectors.value[0] | null = null;
+              for (const conn of connectors.value) {
+                if (conn.wire === hitObject || conn.connector1 === hitObject || conn.connector2 === hitObject) {
+                  connectionToDelete = conn;
+                  break;
+                }
+              }
+              if (connectionToDelete) {
+                deleteWire(connectionToDelete.wire);
               }
             }
             return;
@@ -2312,6 +2385,11 @@ export default defineComponent({
           window.removeEventListener('mousemove', cleanup.onGlobalMouseMove);
           window.removeEventListener('mouseup', cleanup.onGlobalMouseUp);
         }
+      }
+
+      // Cброс hover-эффектов при размонтировании
+      if (currentHoveredConnection) {
+        applyConnectionHoverEffect(currentHoveredConnection, false);
       }
 
       // Очищаем соединения
