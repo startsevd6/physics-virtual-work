@@ -311,6 +311,9 @@ export default defineComponent({
     // Хранение оригинальных свойств материалов для hover/active эффектов
     const originalMaterialProps = new Map<THREE.Material, { emissive: number; color?: number }>();
 
+    // Массив для хранения всех созданных коннекторов (для рейкастинга и удаления)
+    const connectorMeshes = ref<THREE.Object3D[]>([]);
+
     // Функция для применения hover-эффекта к модели
     function applyHoverEffect(model: THREE.Object3D, isHover: boolean) {
       // Не применяем hover-эффект к активной крутилке (она в режиме drag)
@@ -1232,6 +1235,11 @@ export default defineComponent({
       );
       if (connectionIndex !== -1) connections.value.splice(connectionIndex, 1);
 
+      // Удаляем коннекторы из массива connectorMeshes
+      connectorMeshes.value = connectorMeshes.value.filter(
+          mesh => mesh !== connectorData.connector1 && mesh !== connectorData.connector2
+      );
+
       // Сброс выделения
       if (firstSelectedPort.value) {
         highlightPort(null);
@@ -1283,6 +1291,7 @@ export default defineComponent({
       wires.value = [];
       connectors.value = [];
       connections.value = [];
+      connectorMeshes.value = [];
 
       // Сбрасываем состояние проверки и выделение порта
       circuitValid.value = false;
@@ -1457,6 +1466,13 @@ export default defineComponent({
         // Проверяем провода для возможного удаления (курсор меняется)
         const wireIntersects = raycaster.intersectObjects(wires.value);
         if (wireIntersects.length > 0) {
+          renderer.domElement.style.cursor = 'pointer';
+          return;
+        }
+
+        // Проверяем коннекторы
+        const connectorIntersects = raycaster.intersectObjects(connectorMeshes.value);
+        if (connectorIntersects.length > 0) {
           renderer.domElement.style.cursor = 'pointer';
           return;
         }
@@ -1651,6 +1667,26 @@ export default defineComponent({
             if (wireObject && wireObject.userData.type === 'wire') {
               deleteWire(wireObject as THREE.Mesh);
             }
+            return;
+          }
+
+          // Проверяем клик по коннектору
+          const connectorIntersects = raycaster.intersectObjects(connectorMeshes.value);
+          if (connectorIntersects.length > 0) {
+            let hitObject: THREE.Object3D | null = connectorIntersects[0]?.object || null;
+            // Поднимаемся по родителям, пока не найдем объект с userData.type === 'connector'
+            while (hitObject && hitObject.userData.type !== 'connector') {
+              hitObject = hitObject.parent;
+            }
+            if (hitObject) {
+              const connectorEntry = connectors.value.find(
+                  c => c.connector1 === hitObject || c.connector2 === hitObject
+              );
+              if (connectorEntry) {
+                deleteWire(connectorEntry.wire);
+              }
+            }
+            return;
           }
 
           // Клик не по порту и не по проводу - снимаем выделение и сбрасываем hover
@@ -2077,6 +2113,9 @@ export default defineComponent({
 
       scene.add(connector1);
       scene.add(connector2);
+
+      // Добавляем коннекторы в массив для рейкастинга и удаления
+      connectorMeshes.value.push(connector1, connector2);
 
       // Точки крепления провода – концы коннекторов (смещение вдоль направления порта)
       const start = connector1.position.clone().addScaledVector(dir1, CONNECTOR_OFFSET);
