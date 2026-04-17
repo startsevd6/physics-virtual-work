@@ -332,6 +332,9 @@ export default defineComponent({
     // Текущее подсвеченное соединение (провод + оба коннектора)
     let currentHoveredConnection: typeof connectors.value[0] | null = null;
 
+    // ref для отслеживания наведения на крутилку
+    const isHoveringSpinner = ref(false);
+
     // Функция для применения hover-эффекта к модели
     function applyHoverEffect(model: THREE.Object3D, isHover: boolean) {
       // Не применяем hover-эффект к активной крутилке (она в режиме drag)
@@ -1480,6 +1483,11 @@ export default defineComponent({
           const hitMesh = spinnerIntersects[0]?.object as THREE.Mesh;
           const spinnerType = meshToSpinnerMap.value.get(hitMesh);
           if (spinnerType) {
+            if (!isHoveringSpinner.value) {
+              isHoveringSpinner.value = true;
+              if (controls) controls.enableZoom = false;
+            }
+
             const spinnerModel = spinnerType === 'voltage' ? voltageSpinner.value : thermistorSpinner.value;
             // Применяем hover только если модель не активна (не в процессе drag)
             if (spinnerModel && currentHoveredModel !== spinnerModel && activeSpinnerModel !== spinnerModel) {
@@ -1495,6 +1503,11 @@ export default defineComponent({
               renderer.domElement.style.cursor = 'grab';
             }
             return;
+          }
+        } else {
+          if (isHoveringSpinner.value) {
+            isHoveringSpinner.value = false;
+            if (controls) controls.enableZoom = true;
           }
         }
 
@@ -1651,29 +1664,28 @@ export default defineComponent({
         }
       };
 
-      // Обработчик колесика для крутилок
+      // Обработчик колесика для крутилок (улучшен: предотвращает масштабирование камеры)
       const onWheel = (event: WheelEvent) => {
         if (!renderer || !camera || !scene) return;
 
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2();
-        const rect = renderer.domElement.getBoundingClientRect();
-        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        if (isHoveringSpinner.value) {
+          event.preventDefault();
+          event.stopPropagation();
 
-        raycaster.setFromCamera(mouse, camera);
-        const spinnerIntersects = raycaster.intersectObjects(spinnerMeshes.value);
-        if (spinnerIntersects.length > 0) {
-          const hitMesh = spinnerIntersects[0]?.object as THREE.Mesh;
-          const spinnerType = meshToSpinnerMap.value.get(hitMesh);
-          if (spinnerType) {
-            event.preventDefault();
-            event.stopPropagation();
-            // Временно отключаем управление камерой
-            if (controls) controls.enabled = false;
-            handleSpinnerWheel(event, spinnerType);
-            // Включаем обратно после обработки (можно с задержкой, но обычно не нужно)
-            if (controls) controls.enabled = true;
+          const raycaster = new THREE.Raycaster();
+          const mouse = new THREE.Vector2();
+          const rect = renderer.domElement.getBoundingClientRect();
+          mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+          mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+          raycaster.setFromCamera(mouse, camera);
+          const spinnerIntersects = raycaster.intersectObjects(spinnerMeshes.value);
+          if (spinnerIntersects.length > 0) {
+            const hitMesh = spinnerIntersects[0]?.object as THREE.Mesh;
+            const spinnerType = meshToSpinnerMap.value.get(hitMesh);
+            if (spinnerType) {
+              handleSpinnerWheel(event, spinnerType);
+            }
           }
         }
       };
@@ -1681,7 +1693,8 @@ export default defineComponent({
       renderer.domElement.addEventListener('mousedown', onMouseDown);
       window.addEventListener('mousemove', onGlobalMouseMove);
       window.addEventListener('mouseup', onGlobalMouseUp);
-      renderer.domElement.addEventListener('wheel', onWheel);
+      // Добавляем обработчик wheel с опцией { passive: false }, чтобы preventDefault работал надёжно
+      renderer.domElement.addEventListener('wheel', onWheel, { passive: false });
 
       // Сохраняем ссылки на обработчики для очистки
       const cleanupHandlers = {
