@@ -2478,7 +2478,7 @@ strong, div {
 .three-scene {
   width: 100%;
   height: 100%;
-  border-radius: 8px;
+  border-radius: 20px;
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(0,0,0,0.15);
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -2703,9 +2703,13 @@ button:nth-child(3):hover {
   }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 900px) {
   .content {
-    padding: 20px;
+    padding: 0;
+  }
+
+  .three-scene {
+    border-radius: 0;
   }
 }
 </style>
