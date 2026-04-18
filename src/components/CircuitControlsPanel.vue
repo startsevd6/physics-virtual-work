@@ -1,110 +1,89 @@
 <template>
-  <div class="measurements-section">
-    <h4>Компоненты схемы</h4>
-    <div class="current-components">
-      <!-- Температурный регулятор -->
-      <div class="slot-info">
-        <strong>Температура</strong>
-        <div class="component-params">
-          <div class="param-row">
-            <label>Температура:</label>
-            <div class="param-controls">
-              <input
-                  type="range"
-                  min="290"
-                  max="390"
-                  step="1"
-                  :value="globalTemp"
-                  class="slider"
-                  :disabled="!circuitValid || !thermistorEnabled"
-                  @input="$emit('update:globalTemp', +($event.target as HTMLInputElement).value)"
-                  @wheel.prevent="$emit('temperature-wheel', $event)"
-              />
-              <input
-                  type="number"
-                  min="290"
-                  max="390"
-                  step="1"
-                  :value="globalTemp"
-                  class="input"
-                  :disabled="!circuitValid || !thermistorEnabled"
-                  @input="$emit('update:globalTemp', +($event.target as HTMLInputElement).value)"
-              />
-              <span class="param-unit">K</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      <!-- Источник напряжения -->
-      <div class="slot-info">
-        <strong>Источник напряжения</strong>
-        <div class="component-params">
-          <div class="param-row">
-            <label class="label-voltage">Напряжение:</label>
-            <div class="param-controls">
-              <input
-                  type="range"
-                  min="0"
-                  max="15"
-                  step="0.1"
-                  :value="voltage"
-                  class="slider"
-                  :disabled="!circuitValid || !sourceEnabled"
-                  @input="$emit('update:voltage', +($event.target as HTMLInputElement).value)"
-                  @wheel.prevent="$emit('voltage-wheel', $event)"
-              />
-              <input
-                  type="number"
-                  min="0"
-                  max="15"
-                  step="0.1"
-                  :value="voltage"
-                  class="input"
-                  :disabled="!circuitValid || !sourceEnabled"
-                  @input="$emit('update:voltage', +($event.target as HTMLInputElement).value)"
-              />
-              <span class="param-unit">В</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      <!-- Амперметр -->
-      <div class="slot-info">
-        <strong>Амперметр</strong>
-        <div class="component-params">
-          <div class="param-info">
-            <div v-if="circuitValid && ammeterEnabled && currentI !== null">
-              Текущий ток: {{ currentI.toFixed(4) }} А
-            </div>
-            <div v-else>
-              Прибор выключен
-            </div>
-          </div>
-        </div>
-      </div>
+  <!-- Кнопка вызова меню (только на мобильных) -->
+  <button
+      class="mobile-menu-button"
+      @click="openMobileMenu"
+      aria-label="Открыть панель управления"
+  >
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 12H21M3 6H21M3 18H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  </button>
 
-      <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px;align-items:stretch">
-        <button
-            @click="$emit('save-snapshot')"
-            :disabled="!circuitValid || !sourceEnabled || !thermistorEnabled || !ammeterEnabled"
-            class="save-button"
-        >Сохранить показания
-        </button>
-
-        <button @click="$emit('open-snapshots-modal')" style="background: #3b82f6;">Сохранённые показания</button>
-
-        <div style="display: flex; gap: 8px;">
-          <button @click="$emit('reset-values')" style="flex: 1;">Сброс</button>
-          <button @click="$emit('delete-all-wires')" style="flex: 1; background: #ef4444;">Удалить провода</button>
+  <!-- Мобильная панель (overlay) -->
+  <Transition name="mobile-panel">
+    <div
+        v-if="isMobileMenuOpen"
+        class="mobile-panel-overlay"
+        @click.self="closeMobileMenu"
+    >
+      <div class="mobile-panel-container">
+        <div class="mobile-panel-header">
+          <h3 class="mobile-panel-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="4" width="20" height="16" rx="2" />
+              <path d="M8 10h8M8 14h6" />
+            </svg>
+            Панель управления
+          </h3>
+          <button class="mobile-panel-close" @click="closeMobileMenu" aria-label="Закрыть">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
         </div>
-
-        <button @click="$emit('check-circuit')">Проверить схему</button>
+        <div class="mobile-panel-content">
+          <PanelContent
+              v-bind="$props"
+              @update:globalTemp="emit('update:globalTemp', $event)"
+              @update:voltage="emit('update:voltage', $event)"
+              @temperature-wheel="emit('temperature-wheel', $event)"
+              @voltage-wheel="emit('voltage-wheel', $event)"
+              @save-snapshot="emit('save-snapshot')"
+              @reset-values="emit('reset-values')"
+              @delete-all-wires="emit('delete-all-wires')"
+              @check-circuit="emit('check-circuit')"
+              @open-snapshots-modal="emit('open-snapshots-modal')"
+          />
+        </div>
       </div>
     </div>
+  </Transition>
+
+  <!-- Десктопная панель (исходная, улучшенный дизайн) -->
+  <div class="measurements-section desktop-panel">
+    <div class="panel-header">
+      <h4 class="panel-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="4" width="20" height="16" rx="2" />
+          <path d="M8 10h8M8 14h6" />
+        </svg>
+        Компоненты схемы
+      </h4>
+      <div class="circuit-status" :class="{ valid: circuitValid }">
+        <span class="status-dot"></span>
+        {{ circuitValid ? 'Схема собрана' : 'Схема не проверена' }}
+      </div>
+    </div>
+    <PanelContent
+        v-bind="$props"
+        @update:globalTemp="emit('update:globalTemp', $event)"
+        @update:voltage="emit('update:voltage', $event)"
+        @temperature-wheel="emit('temperature-wheel', $event)"
+        @voltage-wheel="emit('voltage-wheel', $event)"
+        @save-snapshot="emit('save-snapshot')"
+        @reset-values="emit('reset-values')"
+        @delete-all-wires="emit('delete-all-wires')"
+        @check-circuit="emit('check-circuit')"
+        @open-snapshots-modal="emit('open-snapshots-modal')"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, watch } from 'vue';
+import PanelContent from './PanelContent.vue'; // выделим содержимое в отдельный компонент
+
 defineProps<{
   globalTemp: number;
   voltage: number;
@@ -115,7 +94,7 @@ defineProps<{
   thermistorEnabled: boolean;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'update:globalTemp', value: number): void;
   (e: 'update:voltage', value: number): void;
   (e: 'temperature-wheel', event: WheelEvent): void;
@@ -126,186 +105,234 @@ defineEmits<{
   (e: 'check-circuit'): void;
   (e: 'open-snapshots-modal'): void;
 }>();
+
+// Состояние мобильного меню
+const isMobileMenuOpen = ref(false);
+
+function openMobileMenu() {
+  isMobileMenuOpen.value = true;
+  document.body.style.overflow = 'hidden';
+}
+
+function closeMobileMenu() {
+  isMobileMenuOpen.value = false;
+  document.body.style.overflow = '';
+}
+
+// Сброс блокировки прокрутки при размонтировании
+watch(isMobileMenuOpen, (val) => {
+  if (!val) {
+    document.body.style.overflow = '';
+  }
+}, { flush: 'post' });
 </script>
 
 <style scoped>
+/* ===== Общие стили ===== */
 .measurements-section {
-  background: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  overflow-y: auto;
-}
-
-.current-components {
-  display: grid;
-  gap: 16px;
-  margin-top: 12px;
-}
-
-.slot-info {
-  padding: 16px;
-  border: 2px solid #e5e7eb;
-  border-radius: 8px;
-  background: #f9fafb;
-}
-
-.component-params {
-  margin: 12px 0;
-  padding: 12px;
+  min-width: 425px;
   background: #ffffff;
-  border-radius: 6px;
-  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.02);
+  overflow-y: auto;
+  transition: box-shadow 0.2s;
+  border: 1px solid rgba(226, 232, 240, 0.4);
+  backdrop-filter: blur(2px);
 }
 
-.param-row {
+.measurements-section:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+}
+
+.panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.panel-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
   gap: 10px;
 }
 
-.param-row label {
-  font-weight: 500;
-  color: #4b5563;
-  font-size: 14px;
+.panel-title svg {
+  color: #4f46e5;
+  stroke-width: 2.2;
 }
 
-.param-controls {
+.circuit-status {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1;
-}
-
-.slider {
-  flex: 1;
-  max-height: 6px;
-  border-radius: 3px;
-  background: #e5e7eb;
-  outline: none;
-  -webkit-appearance: none;
-  appearance: none;
-  cursor: pointer;
-}
-
-.slider:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #4f46e5;
-  cursor: pointer;
-}
-
-.slider::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #4f46e5;
-  cursor: pointer;
-  border: none;
-}
-
-.input {
-  padding: 6px 8px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  font-size: 14px;
-  text-align: center;
-  appearance: textfield;
-}
-
-.input:disabled {
-  background-color: #f0f0f0;
-  color: #999;
-  cursor: not-allowed;
-}
-
-.input::-webkit-inner-spin-button,
-.input::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  appearance: none;
-  margin: 0;
-}
-
-.param-unit {
-  font-size: 14px;
-  color: #6b7280;
-  min-width: 20px;
-}
-
-.param-info {
-  margin-top: 12px;
-  padding: 8px;
-  background: #f0f9ff;
-  border-radius: 4px;
-  font-size: 13px;
-  color: #0369a1;
-  border: 1px solid #bae6fd;
-}
-
-.param-info div {
-  margin-bottom: 4px;
-}
-
-.param-info div:last-child {
-  margin-bottom: 0;
-}
-
-button {
-  padding: 8px 16px;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
+  font-size: 0.8rem;
   font-weight: 500;
-  transition: all 0.2s;
+  padding: 6px 12px;
+  border-radius: 40px;
+  background: #f1f5f9;
+  color: #475569;
 }
 
-button:not(.save-button) {
-  background: #4f46e5;
+.circuit-status.valid {
+  background: #ecfdf5;
+  color: #047857;
 }
 
-button:not(.save-button):hover {
-  background: #4338ca;
-  transform: translateY(-1px);
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #94a3b8;
 }
 
-button:not(.save-button):active {
-  transform: translateY(0);
-}
-
-button.save-button {
-  background: #4f46e5;
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-button.save-button:enabled {
+.circuit-status.valid .status-dot {
   background: #10b981;
-  opacity: 1;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+/* ===== Мобильная кнопка ===== */
+.mobile-menu-button {
+  display: none;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 60px;
+  height: 60px;
+  border-radius: 30px;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: white;
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
+  z-index: 1000;
+  border: none;
   cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
-button.save-button:enabled:hover {
-  background: #0da271;
-  transform: translateY(-1px);
+.mobile-menu-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 12px 28px rgba(79, 70, 229, 0.45);
 }
 
-button.save-button:enabled:active {
-  transform: translateY(0);
+.mobile-menu-button:active {
+  transform: scale(0.98);
 }
 
-@media (max-width: 700px) {
-  .measurements-section {
+/* ===== Мобильная панель ===== */
+.mobile-panel-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(8px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.mobile-panel-container {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  background: white;
+  border-radius: 28px;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #eef2f6;
+  background: white;
+}
+
+.mobile-panel-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mobile-panel-title svg {
+  color: #4f46e5;
+}
+
+.mobile-panel-close {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #64748b;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.mobile-panel-close:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+.mobile-panel-content {
+  padding: 20px 24px 24px;
+  overflow-y: auto;
+  background: #fafcff;
+}
+
+/* ===== Анимации ===== */
+.mobile-panel-enter-active,
+.mobile-panel-leave-active {
+  transition: opacity 0.25s ease;
+}
+.mobile-panel-enter-active .mobile-panel-container,
+.mobile-panel-leave-active .mobile-panel-container {
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+.mobile-panel-enter-from,
+.mobile-panel-leave-to {
+  opacity: 0;
+}
+.mobile-panel-enter-from .mobile-panel-container,
+.mobile-panel-leave-to .mobile-panel-container {
+  transform: scale(0.92);
+  opacity: 0;
+}
+
+/* ===== Медиа-запросы ===== */
+@media (max-width: 900px) {
+  .desktop-panel {
     display: none;
+  }
+  .mobile-menu-button {
+    display: flex;
   }
 }
 </style>
