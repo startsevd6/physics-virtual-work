@@ -128,7 +128,7 @@ watch(isMobileMenuOpen, (val) => {
 </script>
 
 <style scoped>
-/* ===== Общие стили ===== */
+/* Общие стили */
 .measurements-section {
   min-width: 425px;
   background: #ffffff;
@@ -198,7 +198,7 @@ watch(isMobileMenuOpen, (val) => {
   box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
 }
 
-/* ===== Мобильная кнопка ===== */
+/* Мобильная кнопка */
 .mobile-menu-button {
   display: none;
   position: fixed;
@@ -228,7 +228,7 @@ watch(isMobileMenuOpen, (val) => {
   transform: scale(0.98);
 }
 
-/* ===== Мобильная панель ===== */
+/* Мобильная панель */
 .mobile-panel-overlay {
   position: fixed;
   top: 0;
@@ -307,7 +307,7 @@ watch(isMobileMenuOpen, (val) => {
   background: #fafcff;
 }
 
-/* ===== Анимации ===== */
+/* Анимации */
 .mobile-panel-enter-active,
 .mobile-panel-leave-active {
   transition: opacity 0.25s ease;
@@ -326,7 +326,7 @@ watch(isMobileMenuOpen, (val) => {
   opacity: 0;
 }
 
-/* ===== Медиа-запросы ===== */
+/* Медиа-запросы */
 @media (max-width: 900px) {
   .desktop-panel {
     display: none;
