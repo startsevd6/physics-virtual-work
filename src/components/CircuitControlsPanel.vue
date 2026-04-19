@@ -5,7 +5,7 @@
       @click="openMobileMenu"
       aria-label="Открыть панель управления"
   >
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
       <path d="M3 12H21M3 6H21M3 18H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
     </svg>
   </button>
@@ -20,14 +20,14 @@
       <div class="mobile-panel-container">
         <div class="mobile-panel-header">
           <h3 class="mobile-panel-title">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <rect x="2" y="4" width="20" height="16" rx="2" />
               <path d="M8 10h8M8 14h6" />
             </svg>
             Панель управления
           </h3>
           <button class="mobile-panel-close" @click="closeMobileMenu" aria-label="Закрыть">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <svg width="20" height="20" viewBox="0 0 24 24">
               <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             </svg>
           </button>
@@ -54,7 +54,7 @@
   <div class="measurements-section desktop-panel">
     <div class="panel-header">
       <h4 class="panel-title">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <rect x="2" y="4" width="20" height="16" rx="2" />
           <path d="M8 10h8M8 14h6" />
         </svg>
@@ -169,6 +169,7 @@ watch(isMobileMenuOpen, (val) => {
 .panel-title svg {
   color: #4f46e5;
   stroke-width: 2.2;
+  fill: none;
 }
 
 .circuit-status {
@@ -280,6 +281,7 @@ watch(isMobileMenuOpen, (val) => {
 
 .mobile-panel-title svg {
   color: #4f46e5;
+  fill: none;
 }
 
 .mobile-panel-close {

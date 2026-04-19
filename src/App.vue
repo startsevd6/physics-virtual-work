@@ -2,22 +2,16 @@
     <div class="header" :class="{ 'header--loaded': isLoaded }">
       <h1>Виртуальная лаборатория: исследование свойств терморезистора</h1>
       <div class="subtitle">3D интерактивная среда</div>
+      <!-- Кнопка настроек -->
+      <button class="settings-button" @click="openSettingsModal" aria-label="Настройки">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
     </div>
 
-    <CircuitBuilder3D/>
-
-    <!--
-    <div class="instructions">
-      <h3>Инструкция</h3>
-      <ol>
-        <li>Для изменения угла наклона камеры используйте левую кнопку мыши,
-          перемещения камеры - правую кнопку мыши,
-          изменения фокусного расстояния - колёсико</li>
-        <li>Установите регуляторы температуры и напряжения в необходимые положения и начните измерения</li>
-        <li>Сохраняйте показания приборов — таблица обновляется автоматически</li>
-      </ol>
-    </div>
-    -->
+    <CircuitBuilder3D ref="circuitBuilderRef"/>
 </template>
 
 <script lang="ts">
@@ -29,12 +23,16 @@ export default defineComponent({
   components: { CircuitBuilder3D },
   setup() {
     const isLoaded = ref(false)
+    const circuitBuilderRef = ref<InstanceType<typeof CircuitBuilder3D> | null>(null)
 
     const handleLoad = () => {
-      // Задержка для лучшего визуального эффекта
       setTimeout(() => {
         isLoaded.value = true
       }, 100)
+    }
+
+    const openSettingsModal = () => {
+      circuitBuilderRef.value?.openSettings()
     }
 
     onMounted(() => {
@@ -50,7 +48,9 @@ export default defineComponent({
     })
 
     return {
-      isLoaded
+      isLoaded,
+      circuitBuilderRef,
+      openSettingsModal
     }
   }
 })
@@ -70,7 +70,7 @@ body {
 }
 
 #app {
-  text-align: center;  
+  text-align: center;
   overflow: hidden;
 
   margin: 0 auto;
@@ -179,24 +179,27 @@ body {
   transform: translateY(0);
 }
 
-.instructions h3 {
-  color: #1f2937;
-  margin-bottom: 16px;
-  font-size: 20px;
-}
-
-.instructions ol {
+/* Стили для кнопки настроек */
+.settings-button {
+  padding: 10px 12px;
+  background: #ffffff;
+  border-color: #cbd5e1;
+  cursor: pointer;
   color: #4b5563;
-  line-height: 1.6;
-  padding-left: 20px;
 }
 
-.instructions li {
-  margin-bottom: 8px;
+.settings-button:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #1f2937;
 }
 
-.instructions li:last-child {
-  margin-bottom: 0;
+.settings-button svg {
+  transition: transform 0.2s;
+}
+
+.settings-button:hover svg {
+  transform: scale(1.1);
 }
 
 @media (max-width: 700px) {

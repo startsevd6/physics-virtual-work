@@ -8,7 +8,7 @@
               Настройки
             </h3>
             <button class="modal-close" @click="closeModal" aria-label="Закрыть">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path d="M18 6L6 18M6 6L18 18" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </button>
@@ -262,11 +262,6 @@ function resetToDefaults() {
   letter-spacing: -0.01em;
 }
 
-.title-icon {
-  font-size: 1.8rem;
-  line-height: 1;
-}
-
 .modal-close {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
@@ -312,11 +307,6 @@ function resetToDefaults() {
   margin-bottom: 20px;
 }
 
-.section-icon {
-  font-size: 1.5rem;
-  line-height: 1;
-}
-
 .section-header h4 {
   margin: 0;
   font-size: 1.2rem;
@@ -343,12 +333,6 @@ function resetToDefaults() {
   font-weight: 500;
   color: #334155;
   font-size: 1rem;
-}
-
-.label-icon {
-  font-size: 1.2rem;
-  width: 24px;
-  text-align: center;
 }
 
 .setting-subitem {

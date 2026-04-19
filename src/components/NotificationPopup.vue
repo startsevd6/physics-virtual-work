@@ -6,7 +6,7 @@
           <svg v-if="type === 'success'" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          <svg v-else viewBox="0 0 24 24"  xmlns="http://www.w3.org/2000/svg">
+          <svg v-else viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
@@ -141,6 +141,7 @@ onUnmounted(() => {
   width: 28px;
   height: 28px;
   stroke: currentColor;
+  fill: none;
 }
 
 .popup-content {

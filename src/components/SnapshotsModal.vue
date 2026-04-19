@@ -167,4 +167,8 @@ function handleDelete(index: number) {
   transform: translateY(0);
   box-shadow: 0 2px 4px rgba(79, 70, 229, 0.1);
 }
+
+svg {
+  fill: none;
+}
 </style>

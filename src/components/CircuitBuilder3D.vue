@@ -2309,6 +2309,10 @@ export default defineComponent({
       }
     }
 
+    function openSettings() {
+      showSettingsModal.value = true;
+    }
+
     // При изменении соединений сбрасываем статус проверки
     watch(connections, () => {
       circuitValid.value = false;
@@ -2394,6 +2398,7 @@ export default defineComponent({
       showSettingsModal,
       settings,
 
+
       // Состояние загрузки
       isLoading,
       loadedModelsCount,
@@ -2420,6 +2425,7 @@ export default defineComponent({
       checkCircuit,
       deleteAllWires,
       applySettings,
+      openSettings,
     };
   }
 });
