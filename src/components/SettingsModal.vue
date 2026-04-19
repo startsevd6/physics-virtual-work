@@ -550,4 +550,11 @@ function resetToDefaults() {
   transform: scale(0.92);
   opacity: 0;
 }
+
+@media (max-width: 460px) {
+  .modal-footer {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
 </style>
