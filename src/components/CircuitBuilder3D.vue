@@ -3,23 +3,11 @@
     <div class="circuit-container">
       <div class="scene-section">
         <!-- Оверлей загрузки -->
-        <div v-if="isLoading" class="loading-overlay">
-          <div class="loading-content">
-            <div class="spinner"></div>
-            <div class="loading-text">Загрузка 3D-моделей...</div>
-            <div class="loading-progress">
-              <div class="progress-bar">
-                <div
-                    class="progress-fill"
-                    :style="{ width: loadingProgress + '%' }"
-                ></div>
-              </div>
-              <div class="progress-text">
-                {{ (loadedModelsCount / totalModelsCount * 100).toFixed(0) }} %
-              </div>
-            </div>
-          </div>
-        </div>
+        <LoadingOverlay
+            :is-loading="isLoading"
+            :loaded-count="loadedModelsCount"
+            :total-count="totalModelsCount"
+        />
 
         <div
             id="scene3d"
@@ -80,6 +68,7 @@ import NotificationPopup from './NotificationPopup.vue';
 import SnapshotsModal from './SnapshotsModal.vue';
 import CircuitControlsPanel from './CircuitControlsPanel.vue';
 import SettingsModal, { type Settings } from './SettingsModal.vue';
+import LoadingOverlay from './LoadingOverlay.vue';
 
 // Импортируем конфигурацию из отдельного файла
 import { decorativeConfigs, modelPaths } from '../config/3d-models';
@@ -101,6 +90,7 @@ export default defineComponent({
     SnapshotsModal,
     CircuitControlsPanel,
     SettingsModal,
+    LoadingOverlay,
   },
 
   setup() {
@@ -2494,77 +2484,6 @@ strong, div {
 .three-scene.loading {
   filter: blur(2px);
   opacity: 0.7;
-}
-
-/* Оверлей загрузки */
-.loading-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.9);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  border-radius: 8px;
-}
-
-.loading-content {
-  text-align: center;
-  background: white;
-  padding: 30px;
-  border-radius: 12px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
-  max-width: 400px;
-  width: 90%;
-}
-
-.spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #4f46e5;
-  border-radius: 50%;
-  margin: 0 auto 20px;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.loading-text {
-  font-size: 18px;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 15px;
-}
-
-.loading-progress {
-  margin-top: 20px;
-}
-
-.progress-bar {
-  height: 8px;
-  background: #e5e7eb;
-  border-radius: 4px;
-  overflow: hidden;
-  margin-bottom: 8px;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #4f46e5, #7c3aed);
-  border-radius: 4px;
-  transition: width 0.3s ease;
-}
-
-.progress-text {
-  font-size: 14px;
-  color: #6b7280;
 }
 
 @keyframes spin-small {
