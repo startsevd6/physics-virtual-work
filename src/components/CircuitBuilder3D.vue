@@ -44,6 +44,7 @@
           @delete-all-wires="deleteAllWires"
           @check-circuit="checkCircuit"
           @open-snapshots-modal="showSnapshotsModal = true"
+          @open-settings="showSettingsModal = true"
       />
     </div>
 
@@ -52,6 +53,12 @@
         :snapshots="snapshots"
         :getThermistorTypeLabel="getThermistorTypeLabel"
         @delete="deleteSnapshot"
+    />
+
+    <SettingsModal
+        v-model="showSettingsModal"
+        :settings="settings"
+        @apply="applySettings"
     />
 
     <ErrorPopup
@@ -72,6 +79,7 @@ import { MeshStandardMaterial, CubicBezierCurve3, TubeGeometry, Object3D } from 
 import NotificationPopup from './NotificationPopup.vue';
 import SnapshotsModal from './SnapshotsModal.vue';
 import CircuitControlsPanel from './CircuitControlsPanel.vue';
+import SettingsModal, { type Settings } from './SettingsModal.vue';
 
 // Импортируем конфигурацию из отдельного файла
 import { decorativeConfigs, modelPaths } from '../config/3d-models';
@@ -92,6 +100,7 @@ export default defineComponent({
     ErrorPopup: NotificationPopup,
     SnapshotsModal,
     CircuitControlsPanel,
+    SettingsModal,
   },
 
   setup() {
@@ -107,7 +116,6 @@ export default defineComponent({
 
     // Состояние приложения
     const globalTemp = ref(300);
-    const showShadows = ref(true);
     const voltageSpinner = ref<THREE.Object3D | null>(null);
     const thermistorSpinner = ref<THREE.Object3D | null>(null);
 
@@ -238,6 +246,82 @@ export default defineComponent({
 
     // Состояние открытия модального окна с сохранёнными показаниями
     const showSnapshotsModal = ref(false);
+
+    // Реактивные ссылки на источники света и рендерер
+    const ambientLightRef = ref<THREE.AmbientLight | null>(null);
+    const dirLightRef = ref<THREE.DirectionalLight | null>(null);
+    const rendererRef = ref<THREE.WebGLRenderer | null>(null);
+
+    // Настройки
+    const showSettingsModal = ref(false);
+
+    const defaultSettings: Settings = {
+      shadowsEnabled: true,
+      shadowMapSize: 2048,
+      antialiasEnabled: true,
+      ambientIntensity: 0.6,
+      dirLightIntensity: 0.8,
+      pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+    };
+
+    const settings = reactive<Settings>({ ...defaultSettings });
+    const showShadows = ref(settings.shadowsEnabled);
+
+    // Загрузка сохранённых настроек из localStorage
+    function loadSettings() {
+      try {
+        const saved = localStorage.getItem('circuit3d-settings');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          Object.assign(settings, parsed);
+        }
+      } catch (e) {
+        console.warn('Не удалось загрузить настройки', e);
+      }
+    }
+    loadSettings();
+
+    // Применение настроек
+    function applySettings(newSettings: Settings) {
+      Object.assign(settings, newSettings);
+      // Сохраняем в localStorage
+      localStorage.setItem('circuit3d-settings', JSON.stringify(settings));
+
+      // Применяем тени
+      showShadows.value = settings.shadowsEnabled;
+      if (rendererRef.value) {
+        rendererRef.value.shadowMap.enabled = settings.shadowsEnabled;
+        rendererRef.value.setPixelRatio(settings.pixelRatio);
+      }
+      if (dirLightRef.value) {
+        dirLightRef.value.shadow.mapSize.width = settings.shadowMapSize;
+        dirLightRef.value.shadow.mapSize.height = settings.shadowMapSize;
+        dirLightRef.value.intensity = settings.dirLightIntensity;
+      }
+      if (ambientLightRef.value) {
+        ambientLightRef.value.intensity = settings.ambientIntensity;
+      }
+
+      // Обновляем тени у объектов сцены
+      updateShadowsForAllObjects();
+
+      // Если изменился antialias – показываем подсказку о перезагрузке
+      if (settings.antialiasEnabled !== (rendererRef.value?.getContext()?.getContextAttributes()?.antialias ?? true)) {
+        showPopup('Изменение сглаживания вступит в силу после перезагрузки страницы', 'success');
+      }
+    }
+
+    // Функция обновления теней у всех объектов (адаптированная)
+    function updateShadowsForAllObjects() {
+      if (!scene) return;
+      scene.traverse((obj) => {
+        if ((obj as THREE.Mesh).isMesh) {
+          obj.castShadow = showShadows.value;
+          obj.receiveShadow = showShadows.value;
+        }
+      });
+      // Для декоративных элементов можно оставить как есть (уже учтено)
+    }
 
     // Функция для применения hover-эффекта к модели
     function applyHoverEffect(model: THREE.Object3D, isHover: boolean) {
@@ -1316,7 +1400,8 @@ export default defineComponent({
       camera.lookAt(0, 0, 0);
 
       // Рендерер
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer = new THREE.WebGLRenderer({ antialias: settings.antialiasEnabled, alpha: true });
+      rendererRef.value = renderer;
       renderer.setSize(sceneContainer.value.clientWidth, sceneContainer.value.clientHeight);
       renderer.shadowMap.enabled = showShadows.value;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -1332,15 +1417,17 @@ export default defineComponent({
       controls.maxPolarAngle = Math.PI / 2;
 
       // Освещение
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      const ambientLight = new THREE.AmbientLight(0xffffff, settings.ambientIntensity);
+      ambientLightRef.value = ambientLight;
       scene.add(ambientLight);
 
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, settings.dirLightIntensity);
       directionalLight.position.set(5, 10, 5);
-      directionalLight.castShadow = showShadows.value;
-      directionalLight.shadow.mapSize.width = 2048;
-      directionalLight.shadow.mapSize.height = 2048;
+      directionalLight.castShadow = settings.shadowsEnabled;
+      directionalLight.shadow.mapSize.width = settings.shadowMapSize;
+      directionalLight.shadow.mapSize.height = settings.shadowMapSize;
       directionalLight.shadow.bias = -0.0001;
+      dirLightRef.value = directionalLight;
       scene.add(directionalLight);
 
       // Пол
@@ -2350,6 +2437,8 @@ export default defineComponent({
       thermistorComponent,
       keysPressed,
       showSnapshotsModal,
+      showSettingsModal,
+      settings,
 
       // Состояние загрузки
       isLoading,
@@ -2377,6 +2466,7 @@ export default defineComponent({
       deleteSnapshot,
       checkCircuit,
       deleteAllWires,
+      applySettings,
     };
   }
 });

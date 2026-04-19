@@ -76,6 +76,7 @@
         @delete-all-wires="emit('delete-all-wires')"
         @check-circuit="emit('check-circuit')"
         @open-snapshots-modal="emit('open-snapshots-modal')"
+        @open-settings="emit('open-settings')"
     />
   </div>
 </template>
@@ -104,6 +105,7 @@ const emit = defineEmits<{
   (e: 'delete-all-wires'): void;
   (e: 'check-circuit'): void;
   (e: 'open-snapshots-modal'): void;
+  (e: 'open-settings'): void;
 }>();
 
 // Состояние мобильного меню
@@ -130,7 +132,7 @@ watch(isMobileMenuOpen, (val) => {
 <style scoped>
 /* Общие стили */
 .measurements-section {
-  min-width: 440px;
+  min-width: 455px;
   background: #ffffff;
   border-radius: 20px;
   padding: 24px;
