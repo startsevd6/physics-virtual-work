@@ -44,6 +44,7 @@
           @delete-all-wires="deleteAllWires"
           @check-circuit="checkCircuit"
           @open-snapshots-modal="showSnapshotsModal = true"
+          @open-settings="showSettingsModal = true"
       />
     </div>
 
@@ -52,6 +53,12 @@
         :snapshots="snapshots"
         :getThermistorTypeLabel="getThermistorTypeLabel"
         @delete="deleteSnapshot"
+    />
+
+    <SettingsModal
+        v-model="showSettingsModal"
+        :settings="settings"
+        @apply="applySettings"
     />
 
     <ErrorPopup
@@ -72,6 +79,7 @@ import { MeshStandardMaterial, CubicBezierCurve3, TubeGeometry, Object3D } from 
 import NotificationPopup from './NotificationPopup.vue';
 import SnapshotsModal from './SnapshotsModal.vue';
 import CircuitControlsPanel from './CircuitControlsPanel.vue';
+import SettingsModal, { type Settings } from './SettingsModal.vue';
 
 // Импортируем конфигурацию из отдельного файла
 import { decorativeConfigs, modelPaths } from '../config/3d-models';
@@ -92,6 +100,7 @@ export default defineComponent({
     ErrorPopup: NotificationPopup,
     SnapshotsModal,
     CircuitControlsPanel,
+    SettingsModal,
   },
 
   setup() {
@@ -107,7 +116,6 @@ export default defineComponent({
 
     // Состояние приложения
     const globalTemp = ref(300);
-    const showShadows = ref(true);
     const voltageSpinner = ref<THREE.Object3D | null>(null);
     const thermistorSpinner = ref<THREE.Object3D | null>(null);
 
@@ -238,6 +246,82 @@ export default defineComponent({
 
     // Состояние открытия модального окна с сохранёнными показаниями
     const showSnapshotsModal = ref(false);
+
+    // Реактивные ссылки на источники света и рендерер
+    const ambientLightRef = ref<THREE.AmbientLight | null>(null);
+    const dirLightRef = ref<THREE.DirectionalLight | null>(null);
+    const rendererRef = ref<THREE.WebGLRenderer | null>(null);
+
+    // Настройки
+    const showSettingsModal = ref(false);
+
+    const defaultSettings: Settings = {
+      shadowsEnabled: true,
+      shadowMapSize: 2048,
+      antialiasEnabled: true,
+      ambientIntensity: 0.6,
+      dirLightIntensity: 0.8,
+      pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+    };
+
+    const settings = reactive<Settings>({ ...defaultSettings });
+    const showShadows = ref(settings.shadowsEnabled);
+
+    // Загрузка сохранённых настроек из localStorage
+    function loadSettings() {
+      try {
+        const saved = localStorage.getItem('circuit3d-settings');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          Object.assign(settings, parsed);
+        }
+      } catch (e) {
+        console.warn('Не удалось загрузить настройки', e);
+      }
+    }
+    loadSettings();
+
+    // Применение настроек
+    function applySettings(newSettings: Settings) {
+      Object.assign(settings, newSettings);
+      // Сохраняем в localStorage
+      localStorage.setItem('circuit3d-settings', JSON.stringify(settings));
+
+      // Применяем тени
+      showShadows.value = settings.shadowsEnabled;
+      if (rendererRef.value) {
+        rendererRef.value.shadowMap.enabled = settings.shadowsEnabled;
+        rendererRef.value.setPixelRatio(settings.pixelRatio);
+      }
+      if (dirLightRef.value) {
+        dirLightRef.value.shadow.mapSize.width = settings.shadowMapSize;
+        dirLightRef.value.shadow.mapSize.height = settings.shadowMapSize;
+        dirLightRef.value.intensity = settings.dirLightIntensity;
+      }
+      if (ambientLightRef.value) {
+        ambientLightRef.value.intensity = settings.ambientIntensity;
+      }
+
+      // Обновляем тени у объектов сцены
+      updateShadowsForAllObjects();
+
+      // Если изменился antialias – показываем подсказку о перезагрузке
+      if (settings.antialiasEnabled !== (rendererRef.value?.getContext()?.getContextAttributes()?.antialias ?? true)) {
+        showPopup('Изменение сглаживания вступит в силу после перезагрузки страницы', 'success');
+      }
+    }
+
+    // Функция обновления теней у всех объектов (адаптированная)
+    function updateShadowsForAllObjects() {
+      if (!scene) return;
+      scene.traverse((obj) => {
+        if ((obj as THREE.Mesh).isMesh) {
+          obj.castShadow = showShadows.value;
+          obj.receiveShadow = showShadows.value;
+        }
+      });
+      // Для декоративных элементов можно оставить как есть (уже учтено)
+    }
 
     // Функция для применения hover-эффекта к модели
     function applyHoverEffect(model: THREE.Object3D, isHover: boolean) {
@@ -666,46 +750,6 @@ export default defineComponent({
       return mesh;
     }
 
-    // Функция для переключения теней
-    /*function toggleShadows() {
-      showShadows.value = !showShadows.value;
-      updateShadows();
-    }*/
-
-    // Функция для обновления теней во всех объектах сцены
-    /*function updateShadows() {
-      if (!scene || !renderer) return;
-
-      // Обновляем настройки рендерера
-      renderer.shadowMap.enabled = showShadows.value;
-
-      // Обходим все объекты в сцене и обновляем их тени
-      scene.traverse((object) => {
-        // Для декоративных элементов проверяем, должны ли они отбрасывать тени
-        const isDecorative = decorativeElements.value.some(el => el.uuid === object.uuid);
-        if (isDecorative) {
-          const config = decorativeConfigs.find(c =>
-              object.position.equals(c.position) ||
-              object.position.distanceTo(c.position) < 0.1
-          );
-          object.castShadow = config?.shadowEnabled && showShadows.value || false;
-          object.receiveShadow = config?.shadowEnabled && showShadows.value || false;
-        } else {
-          object.castShadow = showShadows.value;
-          object.receiveShadow = showShadows.value;
-        }
-      });
-
-      // Также обновляем тени у направленного света
-      if (scene.children) {
-        scene.children.forEach(child => {
-          if (child instanceof THREE.DirectionalLight) {
-            child.castShadow = showShadows.value;
-          }
-        });
-      }
-    }*/
-
     // Вычисление текущего сопротивления терморезистора
     function calculateCurrentResistance(componentData: any): number {
       if (!componentData) return 0;
@@ -1009,12 +1053,6 @@ export default defineComponent({
           break;
         case 'thermistor_lever':
           enabledFlag = thermistorEnabled;
-          onToggle = () => {
-            if (!thermistorEnabled.value) {
-              // опционально сброс температуры
-              // globalTemp.value = 300;
-            }
-          };
           break;
         default:
           return;
@@ -1316,7 +1354,8 @@ export default defineComponent({
       camera.lookAt(0, 0, 0);
 
       // Рендерер
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer = new THREE.WebGLRenderer({ antialias: settings.antialiasEnabled, alpha: true });
+      rendererRef.value = renderer;
       renderer.setSize(sceneContainer.value.clientWidth, sceneContainer.value.clientHeight);
       renderer.shadowMap.enabled = showShadows.value;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -1332,15 +1371,17 @@ export default defineComponent({
       controls.maxPolarAngle = Math.PI / 2;
 
       // Освещение
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      const ambientLight = new THREE.AmbientLight(0xffffff, settings.ambientIntensity);
+      ambientLightRef.value = ambientLight;
       scene.add(ambientLight);
 
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, settings.dirLightIntensity);
       directionalLight.position.set(5, 10, 5);
-      directionalLight.castShadow = showShadows.value;
-      directionalLight.shadow.mapSize.width = 2048;
-      directionalLight.shadow.mapSize.height = 2048;
+      directionalLight.castShadow = settings.shadowsEnabled;
+      directionalLight.shadow.mapSize.width = settings.shadowMapSize;
+      directionalLight.shadow.mapSize.height = settings.shadowMapSize;
       directionalLight.shadow.bias = -0.0001;
+      dirLightRef.value = directionalLight;
       scene.add(directionalLight);
 
       // Пол
@@ -2350,6 +2391,8 @@ export default defineComponent({
       thermistorComponent,
       keysPressed,
       showSnapshotsModal,
+      showSettingsModal,
+      settings,
 
       // Состояние загрузки
       isLoading,
@@ -2372,11 +2415,11 @@ export default defineComponent({
       saveSnapshot,
       resetValues,
       //calculateCurrentResistance,
-      //toggleShadows,
       getThermistorTypeLabel,
       deleteSnapshot,
       checkCircuit,
       deleteAllWires,
+      applySettings,
     };
   }
 });
@@ -2426,15 +2469,6 @@ strong, div {
   display: flex;
   gap: 20px;
 }
-
-/*.controls-panel {
-  width: 250px;
-  background: #fff;
-  border-radius: 8px;
-  padding: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  position: relative;
-}*/
 
 .scene-section {
   flex: 1;
@@ -2539,99 +2573,6 @@ strong, div {
   color: #0369a1;
 }
 
-/*.shadow-control {
-  margin-bottom: 20px;
-  padding: 12px;
-  background: #f8fafc;
-  border-radius: 6px;
-}*/
-
-.shadow-control label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  color: #374151;
-}
-
-/*.shadow-toggle-btn {
-  width: 100%;
-  margin-top: 0;
-}*/
-
-.thermistor-type-selector label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  color: #374151;
-}
-
-/*.radio-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}*/
-
-.radio-group label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-weight: normal;
-  margin-bottom: 0;
-}
-
-.radio-group input[type="radio"] {
-  cursor: pointer;
-}
-
-.temperature-control label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  color: #374151;
-}
-
-.temperature-control input[type="range"] {
-  width: 100%;
-  margin: 8px 0;
-}
-
-.param-row label {
-  font-weight: 500;
-  color: #4b5563;
-  font-size: 14px;
-}
-
-.param-info div {
-  margin-bottom: 4px;
-}
-
-.param-info div:last-child {
-  margin-bottom: 0;
-}
-
-.snapshots-table table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.snapshots-table th,
-.snapshots-table td {
-  padding: 12px 16px;
-  text-align: left;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.snapshots-table th {
-  background: #f9fafb;
-  font-weight: 600;
-  color: #374151;
-}
-
-.snapshots-table tbody tr:hover {
-  background: #f3f4f6;
-}
-
 button {
   padding: 8px 16px;
   color: white;
@@ -2648,13 +2589,6 @@ button:nth-child(3) {
 
 button:nth-child(3):hover {
   background: #0da271;
-}
-
-/* Анимация модального окна */
-.modal-header h3 {
-  margin: 0;
-  font-size: 1.5rem;
-  color: #1f2937;
 }
 
 @media (max-width: 1900px) {
