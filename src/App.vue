@@ -1,10 +1,12 @@
 <template>
     <div class="header" :class="{ 'header--loaded': isLoaded }">
-      <h1>Виртуальная лаборатория: исследование свойств терморезистора</h1>
-      <div class="subtitle">3D интерактивная среда</div>
+      <div class="header-title">
+        <h1>Виртуальная лаборатория: исследование свойств терморезистора</h1>
+        <span class="subtitle">3D интерактивная среда</span>
+      </div>
       <!-- Кнопка настроек -->
       <button class="settings-button" @click="openSettingsModal" aria-label="Настройки">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg width="24" height="24" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="3"/>
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
@@ -74,7 +76,7 @@ body {
   overflow: hidden;
 
   margin: 0 auto;
-  padding: 0px;
+  padding: 0;
 }
 
 .header {
@@ -82,17 +84,13 @@ body {
   flex-direction: row;
   gap: 15px;
   position: fixed;
-  top: 0px;
+  top: 0;
   z-index: 1;
   justify-content: space-between;
   align-items: center;
-  width: stretch;
+  width: 100%;
   height: 100px;
   text-align: center;
-  /*
-  margin: 32px;
-  margin-bottom: 30px;
-  */
   padding: 30px 40px;
   background: white;
   box-shadow: 0 4px 20px rgba(0,0,0,0.1);
@@ -106,6 +104,10 @@ body {
 .header--loaded {
   transform: translateY(0);
   opacity: 1;
+}
+
+.header-title {
+  text-align: left;
 }
 
 .header h1 {
@@ -138,68 +140,60 @@ body {
   opacity: 1;
 }
 
-.controls {
-  /*background: white;*/
-  /*border-radius: 12px;*/
-  padding: 30px;
-  /*box-shadow: 0 4px 20px rgba(0,0,0,0.1);*/
-  margin-bottom: 24px;
-
-  scroll-snap-align: start;
-  min-block-size: calc(100vh - 100px);
-  scroll-snap-stop: always;
-
-  opacity: 0;
-  transform: translateY(20px);
-  transition: opacity 0.6s ease-out 0.4s, transform 0.6s ease-out 0.4s;
-}
-
-.header--loaded ~ .controls {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.instructions {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-
-  scroll-snap-align: start;
-  min-block-size: calc(100vh - 100px);
-  scroll-snap-stop: always;
-
-  opacity: 0;
-  transform: translateY(20px);
-  transition: opacity 0.6s ease-out 0.5s, transform 0.6s ease-out 0.5s;
-}
-
-.header--loaded ~ .instructions {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Стили для кнопки настроек */
 .settings-button {
   padding: 10px 12px;
   background: #ffffff;
-  border-color: #cbd5e1;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
   cursor: pointer;
   color: #4b5563;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+
+  transition:
+      background 0.25s ease,
+      border-color 0.25s ease,
+      color 0.25s ease,
+      box-shadow 0.25s ease,
+      transform 0.15s cubic-bezier(0.2, 0.9, 0.4, 1);
+
+  animation: subtlePulse 2s ease-in-out 0.5s 1;
+}
+
+@keyframes subtlePulse {
+  0% { box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05); }
+  30% { box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15); }
+  70% { box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15); }
+  100% { box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05); }
 }
 
 .settings-button:hover {
   background: #f8fafc;
   border-color: #94a3b8;
   color: #1f2937;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+  transform: scale(1.02);
+}
+
+.settings-button:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: transform 0.05s, box-shadow 0.05s;
 }
 
 .settings-button svg {
-  transition: transform 0.2s;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .settings-button:hover svg {
-  transform: scale(1.1);
+  transform: rotate(30deg) scale(1.05);
+}
+
+.settings-button:active svg {
+  transform: rotate(30deg) scale(0.95);
+  transition: transform 0.1s;
 }
 
 @media (max-width: 700px) {
@@ -213,6 +207,10 @@ body {
 }
 
 @media (max-width: 500px) {
+  .header {
+    padding: 20px;
+  }
+
   .header h1 {
     font-size: 16px;
   }
