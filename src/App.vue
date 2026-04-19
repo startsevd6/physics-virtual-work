@@ -144,7 +144,7 @@ body {
   padding: 10px 12px;
   background: #ffffff;
   border: 1px solid #cbd5e1;
-  border-radius: 12px;
+  border-radius: 30px;
   cursor: pointer;
   color: #4b5563;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
@@ -188,11 +188,11 @@ body {
 }
 
 .settings-button:hover svg {
-  transform: rotate(30deg) scale(1.05);
+  transform: rotate(45deg) scale(1.05);
 }
 
 .settings-button:active svg {
-  transform: rotate(30deg) scale(0.95);
+  transform: rotate(45deg) scale(0.95);
   transition: transform 0.1s;
 }
 
