@@ -116,14 +116,11 @@
             </div>
           </div>
           <div class="modal-footer">
-            <button v-if="requiresReload" class="btn-reload" @click="reloadPage">
-              <span>↻</span> Перезагрузить сейчас
-            </button>
             <button class="btn-secondary" @click="resetToDefaults">
               <span>↺</span> По умолчанию
             </button>
-            <button class="btn-primary" @click="applyAndClose">
-              <span>✓</span> Применить
+            <button class="btn-primary" @click="applyAndReloadIfNeeded">
+              <span>✓</span> {{ requiresReload ? 'Применить и перезагрузить' : 'Применить' }}
             </button>
           </div>
         </div>
@@ -182,13 +179,13 @@ function closeModal() {
   emit('update:modelValue', false);
 }
 
-function applyAndClose() {
+function applyAndReloadIfNeeded() {
   emit('apply', { ...localSettings });
-  closeModal();
-}
-
-function reloadPage() {
-  window.location.reload();
+  if (requiresReload.value) {
+    window.location.reload();
+  } else {
+    closeModal();
+  }
 }
 
 function toggleShadows() {
@@ -533,24 +530,6 @@ function resetToDefaults() {
 
 .btn-secondary:active {
   transform: translateY(0);
-}
-
-.btn-reload {
-  background: #fef3c7;
-  border: 1px solid #fbbf24;
-  color: #92400e;
-  padding: 12px 20px;
-  border-radius: 40px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.btn-reload:hover {
-  background: #fde68a;
-  border-color: #f59e0b;
 }
 
 /* Transitions */
