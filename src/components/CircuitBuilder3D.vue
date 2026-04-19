@@ -107,7 +107,6 @@ export default defineComponent({
 
     // Состояние приложения
     const globalTemp = ref(300);
-    const selectedThermistorKind = ref('metal');
     const showShadows = ref(true);
     const voltageSpinner = ref<THREE.Object3D | null>(null);
     const thermistorSpinner = ref<THREE.Object3D | null>(null);
@@ -616,11 +615,6 @@ export default defineComponent({
 
     // Следим за изменением температуры
     watch(globalTemp, () => {
-      updateThermistorSpinnerRotation();
-    });
-
-    // Также обновляем при изменении типа терморезистора
-    watch(selectedThermistorKind, () => {
       updateThermistorSpinnerRotation();
     });
 
@@ -1934,25 +1928,6 @@ export default defineComponent({
       return true;
     }
 
-    // Обновление типа терморезистора при изменении радиокнопки
-    function updateThermistorKind() {
-      // Обновляем данные компонента
-      thermistorComponent.data.kind = selectedThermistorKind.value;
-
-      // Обновляем параметры по умолчанию в зависимости от типа
-      if (selectedThermistorKind.value === 'metal') {
-        thermistorComponent.data.R0 = 100;
-        thermistorComponent.data.alpha = 0.0039;
-        thermistorComponent.data.B = undefined;
-      } else {
-        thermistorComponent.data.R0 = 1000;
-        thermistorComponent.data.alpha = undefined;
-        thermistorComponent.data.B = 3500;
-      }
-
-      updateCurrent();
-    }
-
     // Сохранение измерений
     function saveSnapshot() {
       if (!circuitValid.value || !circuitType.value || !sourceEnabled.value || !thermistorEnabled.value || !ammeterEnabled.value) {
@@ -2002,10 +1977,6 @@ export default defineComponent({
 
       // Сбрасываем температуру
       globalTemp.value = 300;
-
-      // Сбрасываем параметры терморезистора к значениям по умолчанию
-      selectedThermistorKind.value = 'metal';
-      updateThermistorKind();
 
       // Сбрасываем камеру к начальной позиции
       if (camera && controls) {
@@ -2297,9 +2268,6 @@ export default defineComponent({
       }
     }
 
-    // Следим за изменением типа терморезистора
-    watch(selectedThermistorKind, updateThermistorKind);
-
     // При изменении соединений сбрасываем статус проверки
     watch(connections, () => {
       circuitValid.value = false;
@@ -2375,7 +2343,6 @@ export default defineComponent({
       popup,
       snapshots,
       currentI,
-      selectedThermistorKind,
       showShadows,
       voltageSpinner,
       thermistorSpinner,
@@ -2589,13 +2556,6 @@ strong, div {
 /*.shadow-toggle-btn {
   width: 100%;
   margin-top: 0;
-}*/
-
-/*.thermistor-type-selector {
-  margin-bottom: 20px;
-  padding: 12px;
-  background: #f8fafc;
-  border-radius: 6px;
 }*/
 
 .thermistor-type-selector label {
