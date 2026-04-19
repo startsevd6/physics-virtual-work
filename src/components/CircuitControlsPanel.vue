@@ -82,8 +82,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import PanelContent from './PanelContent.vue'; // выделим содержимое в отдельный компонент
+import { ref, watch, onMounted, onUnmounted } from 'vue';
+import PanelContent from './PanelContent.vue';
 
 defineProps<{
   globalTemp: number;
@@ -111,6 +111,18 @@ const emit = defineEmits<{
 // Состояние мобильного меню
 const isMobileMenuOpen = ref(false);
 
+// Media query для десктопного режима
+let mediaQuery: MediaQueryList | null = null;
+
+function handleMediaChange(e: MediaQueryListEvent | MediaQueryList) {
+  if (e.matches) {
+    // Перешли на десктоп (ширина > 900px) – закрываем мобильное меню
+    if (isMobileMenuOpen.value) {
+      closeMobileMenu();
+    }
+  }
+}
+
 function openMobileMenu() {
   isMobileMenuOpen.value = true;
   document.body.style.overflow = 'hidden';
@@ -120,6 +132,20 @@ function closeMobileMenu() {
   isMobileMenuOpen.value = false;
   document.body.style.overflow = '';
 }
+
+onMounted(() => {
+  mediaQuery = window.matchMedia('(min-width: 901px)');
+  // Проверяем начальное состояние
+  handleMediaChange(mediaQuery);
+  // Добавляем слушатель
+  mediaQuery.addEventListener('change', handleMediaChange);
+});
+
+onUnmounted(() => {
+  if (mediaQuery) {
+    mediaQuery.removeEventListener('change', handleMediaChange);
+  }
+});
 
 // Сброс блокировки прокрутки при размонтировании
 watch(isMobileMenuOpen, (val) => {
