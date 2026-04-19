@@ -10,7 +10,7 @@
     </svg>
   </button>
 
-  <!-- Мобильная панель (overlay) -->
+  <!-- Мобильная панель -->
   <Transition name="mobile-panel">
     <div
         v-if="isMobileMenuOpen"
@@ -44,13 +44,14 @@
               @delete-all-wires="emit('delete-all-wires')"
               @check-circuit="emit('check-circuit')"
               @open-snapshots-modal="emit('open-snapshots-modal')"
+              @toggle-fullscreen="emit('toggle-fullscreen')"
           />
         </div>
       </div>
     </div>
   </Transition>
 
-  <!-- Десктопная панель (исходная, улучшенный дизайн) -->
+  <!-- Десктопная панель -->
   <div class="measurements-section desktop-panel">
     <div class="panel-header">
       <h4 class="panel-title">
@@ -77,6 +78,7 @@
         @check-circuit="emit('check-circuit')"
         @open-snapshots-modal="emit('open-snapshots-modal')"
         @open-settings="emit('open-settings')"
+        @toggle-fullscreen="emit('toggle-fullscreen')"
     />
   </div>
 </template>
@@ -106,6 +108,7 @@ const emit = defineEmits<{
   (e: 'check-circuit'): void;
   (e: 'open-snapshots-modal'): void;
   (e: 'open-settings'): void;
+  (e: 'toggle-fullscreen'): void;
 }>();
 
 // Состояние мобильного меню

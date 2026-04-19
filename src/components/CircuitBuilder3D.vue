@@ -33,6 +33,7 @@
           @check-circuit="checkCircuit"
           @open-snapshots-modal="showSnapshotsModal = true"
           @open-settings="showSettingsModal = true"
+          @toggle-fullscreen="toggleFullscreen"
       />
     </div>
 
@@ -244,6 +245,9 @@ export default defineComponent({
 
     // Настройки
     const showSettingsModal = ref(false);
+
+    // Полноэкранный режим
+    const isFullscreen = ref(false);
 
     const defaultSettings: Settings = {
       shadowsEnabled: true,
@@ -2062,6 +2066,17 @@ export default defineComponent({
       type: 'error' as 'error' | 'success'
     });
 
+    const toggleFullscreen = () => {
+      if (!renderer) return;
+      const canvas = renderer.domElement;
+
+      if (!document.fullscreenElement) {
+        canvas.requestFullscreen?.();
+      } else {
+        document.exitFullscreen?.();
+      }
+    };
+
     function showPopup(message: string, type: 'error' | 'success' = 'error') {
       popup.message = message;
       popup.type = type;
@@ -2309,12 +2324,17 @@ export default defineComponent({
       circuitType.value = null;
     }, { deep: true });
 
+    const handleFullscreenChange = () => {
+      isFullscreen.value = !!document.fullscreenElement;
+    };
+
     // Хуки жизненного цикла
     onMounted(() => {
       initThreeJS();
       window.addEventListener('keydown', handleKeyDown);
       window.addEventListener('keyup', handleKeyUp);
       clock = new THREE.Clock();
+      document.addEventListener('fullscreenchange', handleFullscreenChange);
     });
 
     onUnmounted(() => {
@@ -2369,6 +2389,8 @@ export default defineComponent({
 
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
     });
 
     return {
@@ -2387,7 +2409,7 @@ export default defineComponent({
       showSnapshotsModal,
       showSettingsModal,
       settings,
-
+      isFullscreen,
 
       // Состояние загрузки
       isLoading,
@@ -2416,6 +2438,7 @@ export default defineComponent({
       deleteAllWires,
       applySettings,
       openSettings,
+      toggleFullscreen,
     };
   }
 });

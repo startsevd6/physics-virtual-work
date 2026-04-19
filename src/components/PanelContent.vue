@@ -173,6 +173,13 @@
         </svg>
         Проверить схему
       </button>
+
+      <button @click="$emit('toggle-fullscreen')" class="action-btn outline-btn fullscreen-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor">
+          <path d="M8 3H5a2 2 0 0 0-2 2v3m14-5h3a2 2 0 0 1 2 2v3m0 6v3a2 2 0 0 1-2 2h-3m-6 0H5a2 2 0 0 1-2-2v-3" />
+        </svg>
+        На весь экран
+      </button>
     </div>
   </div>
 </template>
@@ -198,6 +205,7 @@ defineEmits<{
   (e: 'delete-all-wires'): void;
   (e: 'check-circuit'): void;
   (e: 'open-snapshots-modal'): void;
+  (e: 'toggle-fullscreen'): void;
 }>();
 </script>
 
@@ -518,6 +526,12 @@ svg {
 .danger-btn:hover {
   background: #fef2f2;
   border-color: #fca5a5;
+}
+
+@media (max-width: 900px) {
+  .fullscreen-btn {
+    display: none;
+  }
 }
 
 @media (max-width: 700px) {
