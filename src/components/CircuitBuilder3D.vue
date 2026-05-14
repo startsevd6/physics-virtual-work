@@ -2,18 +2,19 @@
   <div class="content">
     <div class="circuit-container">
       <div class="scene-section">
-        <!-- Оверлей загрузки -->
-        <LoadingOverlay
-            :is-loading="isLoading"
+        <WelcomeScreen
+            :visible="welcomeVisible"
             :loaded-count="loadedModelsCount"
             :total-count="totalModelsCount"
+            :all-loaded="loadedModelsCount >= totalModelsCount && totalModelsCount > 0"
+            @close="handleWelcomeClose"
         />
 
         <div
             id="scene3d"
             ref="sceneContainer"
             class="three-scene"
-            :class="{ 'loading': isLoading }"
+            :class="{ 'loading': welcomeVisible }"
         ></div>
       </div>
 
@@ -69,7 +70,7 @@ import NotificationPopup from './NotificationPopup.vue';
 import SnapshotsModal from './SnapshotsModal.vue';
 import CircuitControlsPanel from './CircuitControlsPanel.vue';
 import SettingsModal, { type Settings } from './SettingsModal.vue';
-import LoadingOverlay from './LoadingOverlay.vue';
+import WelcomeScreen from './WelcomeScreen.vue';
 
 // Импортируем конфигурацию из отдельного файла
 import { decorativeConfigs, modelPaths } from '../config/3d-models';
@@ -91,7 +92,7 @@ export default defineComponent({
     SnapshotsModal,
     CircuitControlsPanel,
     SettingsModal,
-    LoadingOverlay,
+    WelcomeScreen,
   },
 
   setup() {
@@ -112,6 +113,7 @@ export default defineComponent({
 
     // Состояние загрузки
     const isLoading = ref(true);
+    const welcomeVisible = ref(true);
     const loadedModelsCount = ref(0);
     const totalModelsCount = ref(0);
     const loadingProgress = ref(0);
@@ -439,12 +441,11 @@ export default defineComponent({
     function incrementLoadedModels() {
       loadedModelsCount.value++;
       loadingProgress.value = Math.round((loadedModelsCount.value / totalModelsCount.value) * 100);
+    }
 
-      if (loadedModelsCount.value >= totalModelsCount.value) {
-        setTimeout(() => {
-          isLoading.value = false;
-        }, 500);
-      }
+    function handleWelcomeClose() {
+      welcomeVisible.value = false;
+      isLoading.value = false;
     }
 
     // Функция загрузки
@@ -2188,7 +2189,7 @@ export default defineComponent({
       const curve = new CubicBezierCurve3(start, start.clone().addScaledVector(dir1, 0.5), end.clone().addScaledVector(dir2, 0.5), end);
       //const curve = new CatmullRomCurve3([start, mid, end]);
       const tubeGeo = new TubeGeometry(curve, 64, 0.0075, 8, false);
-      const color = WIRE_COLORS[wires.value.length % WIRE_COLORS.length]; // Закольцовано выбираем цвет провода из списка 
+      const color = WIRE_COLORS[wires.value.length % WIRE_COLORS.length]; // Закольцовано выбираем цвет провода из списка
       const material = new THREE.MeshStandardMaterial({ color });
       const wire = new THREE.Mesh(tubeGeo, material);
 
@@ -2413,6 +2414,7 @@ export default defineComponent({
 
       // Состояние загрузки
       isLoading,
+      welcomeVisible,
       loadedModelsCount,
       totalModelsCount,
       loadingProgress,
@@ -2439,6 +2441,7 @@ export default defineComponent({
       applySettings,
       openSettings,
       toggleFullscreen,
+      handleWelcomeClose,
     };
   }
 });
