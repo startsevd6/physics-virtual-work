@@ -2255,35 +2255,55 @@ export default defineComponent({
       });
     }
 
+    // Проверка соответствия требованиям
+    function checkRequirements(requirements: any[]): boolean {
+      for (const req of requirements) {
+        //Если второй элемент в паре - жёстко фиксированный порт
+        if (Array.isArray(req) && req.length === 2 && !Array.isArray(req[1])) {
+          const [a, b] = req;
+          const isConnected = connections.value.some(conn =>
+            (conn.port1 === a && conn.port2 === b) || (conn.port1 === b && conn.port2 === a)
+          );
+          if (!isConnected) return false;
+        }
+        //Если второй элемент в паре - список альтернативных портов
+        else if (Array.isArray(req) && req.length === 2 && Array.isArray(req[1])) {
+          const [requiredPort, possiblePartners] = req;
+          const isConnected = possiblePartners.some(partner =>
+            connections.value.some(conn =>
+              (conn.port1 === requiredPort && conn.port2 === partner) ||
+              (conn.port1 === partner && conn.port2 === requiredPort)
+            )
+          );
+          if (!isConnected) return false;
+        }
+      }
+      return true;
+    }
+
     // Функция проверки схемы
     function checkCircuit() {
+      //На втором месте в паре стоят списки альтернативных портов
       const requiredPairsMetal = [
-        ['port_amp_minus', 'port_thermistor_R2_2'],
-        ['port_amp_plus', 'port_DC_source_plus'],
-        ['port_volt_minus', 'port_thermistor_common_2'],
-        ['port_volt_plus', 'port_thermistor_R2_1'],
-        ['port_DC_source_minus', 'port_thermistor_common_1']
+        ['port_amp_minus', ['port_thermistor_R2_1','port_thermistor_R2_2']],
+        ['port_amp_plus', ['port_DC_source_plus']],
+        ['port_volt_minus', ['port_thermistor_common_1','port_thermistor_common_2']],
+        ['port_volt_plus', ['port_thermistor_R2_1','port_thermistor_R2_2']],
+        ['port_DC_source_minus', ['port_thermistor_common_1','port_thermistor_common_2']]
       ];
 
+      //На втором месте в паре стоят списки альтернативных портов
       const requiredPairsSemiconductor = [
-        ['port_amp_minus', 'port_thermistor_R3_2'],
+        ['port_amp_minus', ['port_thermistor_R3_1','port_thermistor_R3_2']],
         ['port_amp_plus', 'port_DC_source_plus'],
-        ['port_volt_minus', 'port_thermistor_common_2'],
-        ['port_volt_plus', 'port_thermistor_R3_1'],
-        ['port_DC_source_minus', 'port_thermistor_common_1']
+        ['port_volt_minus', ['port_thermistor_common_1','port_thermistor_common_2']],
+        ['port_volt_plus', ['port_thermistor_R3_1','port_thermistor_R3_2']],
+        ['port_DC_source_minus', ['port_thermistor_common_1','port_thermistor_common_2']]
       ];
 
-      const allPresentMetal = requiredPairsMetal.every(([a, b]) => {
-        return connections.value.some(conn =>
-            (conn.port1 === a && conn.port2 === b) || (conn.port1 === b && conn.port2 === a)
-        );
-      });
-
-      const allPresentSemiconductor = requiredPairsSemiconductor.every(([a, b]) => {
-        return connections.value.some(conn =>
-            (conn.port1 === a && conn.port2 === b) || (conn.port1 === b && conn.port2 === a)
-        );
-      });
+      const allPresentMetal = checkRequirements(requiredPairsMetal);
+      
+      const allPresentSemiconductor = checkRequirements(requiredPairsSemiconductor);
 
       if (allPresentMetal) {
         circuitValid.value = true;
