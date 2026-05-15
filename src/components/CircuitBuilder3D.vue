@@ -258,6 +258,8 @@ export default defineComponent({
       ambientIntensity: 0.6,
       dirLightIntensity: 0.8,
       pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+      wireTubularSegments: 16,
+      wireRadialSegments: 4,
     };
 
     const settings = reactive<Settings>({ ...defaultSettings });
@@ -2188,7 +2190,9 @@ export default defineComponent({
       // Используем кривую Безье, чтобы получить торец провода ортогонально к направлению коннектора
       const curve = new CubicBezierCurve3(start, start.clone().addScaledVector(dir1, 0.5), end.clone().addScaledVector(dir2, 0.5), end);
       //const curve = new CatmullRomCurve3([start, mid, end]);
-      const tubeGeo = new TubeGeometry(curve, 64, 0.0075, 8, false);
+      const tubularSegments = settings.wireTubularSegments;
+      const radialSegments = settings.wireRadialSegments;
+      const tubeGeo = new TubeGeometry(curve, tubularSegments, 0.0075, radialSegments, false);
       const color = WIRE_COLORS[wires.value.length % WIRE_COLORS.length]; // Закольцовано выбираем цвет провода из списка
       const material = new THREE.MeshStandardMaterial({ color });
       const wire = new THREE.Mesh(tubeGeo, material);

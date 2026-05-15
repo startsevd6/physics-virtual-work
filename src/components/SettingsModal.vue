@@ -114,6 +114,24 @@
                 <p class="hint">Выше = чётче, но больше нагрузка на GPU.</p>
               </div>
             </div>
+
+            <!-- Качество проводов (только выпадающий список) -->
+            <div class="settings-section">
+              <div class="section-header">
+                <h4>Качество проводов</h4>
+              </div>
+              <div class="setting-item">
+                <label class="setting-label">
+                  <span>Детализация</span>
+                </label>
+                <select v-model="wireQualityPreset" class="modern-select" @change="applyWireQualityPreset">
+                  <option value="low">Низкое</option>
+                  <option value="medium">Среднее</option>
+                  <option value="high">Высокое</option>
+                </select>
+                <div class="hint">Выше = плавнее провода, но больше нагрузка на GPU. Применяется только к новым проводам</div>
+              </div>
+            </div>
           </div>
           <div class="modal-footer">
             <button class="btn-secondary" @click="resetToDefaults">
@@ -139,6 +157,8 @@ export interface Settings {
   ambientIntensity: number;
   dirLightIntensity: number;
   pixelRatio: number;
+  wireTubularSegments: number;
+  wireRadialSegments: number;
 }
 
 const props = defineProps<{
@@ -158,11 +178,41 @@ const requiresReload = ref(false);
 let originalAntialias: boolean;
 let originalShadowMapSize: 1024 | 2048 | 4096;
 
+const wireQualityPreset = ref<'low' | 'medium' | 'high'>('medium');
+
+function applyWireQualityPreset() {
+  const preset = wireQualityPreset.value;
+  switch (preset) {
+    case 'low':
+      localSettings.wireTubularSegments = 2;
+      localSettings.wireRadialSegments = 3;
+      break;
+    case 'medium':
+      localSettings.wireTubularSegments = 16;
+      localSettings.wireRadialSegments = 4;
+      break;
+    case 'high':
+      localSettings.wireTubularSegments = 64;
+      localSettings.wireRadialSegments = 8;
+      break;
+  }
+}
+
+function syncPresetFromValues() {
+  const { wireTubularSegments: t, wireRadialSegments: r } = localSettings;
+  if (t === 2 && r === 3) wireQualityPreset.value = 'low';
+  else if (t === 16 && r === 4) wireQualityPreset.value = 'medium';
+  else if (t === 64 && r === 8) wireQualityPreset.value = 'high';
+  else wireQualityPreset.value = 'medium';
+}
+
 watch(() => props.modelValue, (isOpen) => {
   if (isOpen) {
     originalAntialias = props.settings.antialiasEnabled;
     originalShadowMapSize = props.settings.shadowMapSize;
     requiresReload.value = false;
+    Object.assign(localSettings, props.settings);
+    syncPresetFromValues();
   }
 });
 
@@ -173,6 +223,7 @@ watch([() => localSettings.antialiasEnabled, () => localSettings.shadowMapSize],
 
 watch(() => props.settings, (newVal) => {
   Object.assign(localSettings, newVal);
+  syncPresetFromValues();
 }, { deep: true });
 
 function closeModal() {
@@ -204,7 +255,10 @@ function resetToDefaults() {
     ambientIntensity: 0.6,
     dirLightIntensity: 0.8,
     pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+    wireTubularSegments: 16,
+    wireRadialSegments: 4,
   });
+  syncPresetFromValues();
 }
 </script>
 
