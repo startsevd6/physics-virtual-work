@@ -2287,17 +2287,48 @@ export default defineComponent({
 
     // Функция проверки схемы
     function checkCircuit() {
-      //На втором месте в паре стоят списки альтернативных портов
-      const requiredPairsMetal = [
+      //============== схемы с металлическим терморезистором ==================================
+      //На втором месте в паре стоят списки допустимых портов
+      const metalCircuit1 = [
         ['port_amp_minus', ['port_thermistor_R2_1','port_thermistor_R2_2']],
-        ['port_amp_plus', ['port_DC_source_plus']],
+        ['port_amp_plus', 'port_DC_source_plus'],
         ['port_volt_minus', ['port_thermistor_common_1','port_thermistor_common_2']],
         ['port_volt_plus', ['port_thermistor_R2_1','port_thermistor_R2_2']],
         ['port_DC_source_minus', ['port_thermistor_common_1','port_thermistor_common_2']]
       ];
 
-      //На втором месте в паре стоят списки альтернативных портов
-      const requiredPairsSemiconductor = [
+      //В альтернативном варианте подключения отзеркалены относитьельно портов терморезистора
+      //Т.е. провода слева поменялись с проводами справа
+      const metalCircuit1alt = [
+        ['port_amp_minus', ['port_thermistor_common_1','port_thermistor_common_2']],
+        ['port_amp_plus', 'port_DC_source_plus'],
+        ['port_volt_minus', ['port_thermistor_R2_1','port_thermistor_R2_2']],
+        ['port_volt_plus', ['port_thermistor_common_1','port_thermistor_common_2']],
+        ['port_DC_source_minus', ['port_thermistor_R2_1','port_thermistor_R2_2']]
+      ];
+
+      const metalCircuit2 = [
+        ['port_DC_source_plus', ['port_thermistor_R2_1','port_thermistor_R2_2']],
+        ['port_amp_minus', 'port_DC_source_minus'],
+        ['port_amp_plus', ['port_thermistor_common_1','port_thermistor_common_2']],
+        ['port_volt_minus', ['port_thermistor_common_1','port_thermistor_common_2']],
+        ['port_volt_plus', ['port_thermistor_R2_1','port_thermistor_R2_2']]        
+      ];
+
+      //В альтернативном варианте подключения отзеркалены относитьельно портов терморезистора
+      //Т.е. провода слева поменялись с проводами справа
+      const metalCircuit2alt = [
+        ['port_DC_source_plus', ['port_thermistor_common_1','port_thermistor_common_2']],
+        ['port_amp_minus', 'port_DC_source_minus'],
+        ['port_amp_plus', ['port_thermistor_R2_1','port_thermistor_R2_2']],
+        ['port_volt_minus', ['port_thermistor_R2_1','port_thermistor_R2_2']],
+        ['port_volt_plus', ['port_thermistor_common_1','port_thermistor_common_2']]        
+      ];
+      //=============================================== КОНЕЦ ==================================
+
+      //============== схемы с полупроводниковым терморезистором ===============================
+      //На втором месте в паре стоят списки допустимых портов
+      const semiconductorCircuit1 = [
         ['port_amp_minus', ['port_thermistor_R3_1','port_thermistor_R3_2']],
         ['port_amp_plus', 'port_DC_source_plus'],
         ['port_volt_minus', ['port_thermistor_common_1','port_thermistor_common_2']],
@@ -2305,9 +2336,44 @@ export default defineComponent({
         ['port_DC_source_minus', ['port_thermistor_common_1','port_thermistor_common_2']]
       ];
 
-      const allPresentMetal = checkRequirements(requiredPairsMetal);
+      //В альтернативном варианте подключения отзеркалены относитьельно портов терморезистора
+      //Т.е. провода слева поменялись с проводами справа
+      const semiconductorCircuit1alt = [
+        ['port_amp_minus', ['port_thermistor_common_1','port_thermistor_common_2']],
+        ['port_amp_plus', 'port_DC_source_plus'],
+        ['port_volt_minus', ['port_thermistor_R3_1','port_thermistor_R3_2']],
+        ['port_volt_plus', ['port_thermistor_common_1','port_thermistor_common_2']],
+        ['port_DC_source_minus', ['port_thermistor_R3_1','port_thermistor_R3_2']]
+      ];
+
+      const semiconductorCircuit2 = [
+        ['port_DC_source_plus', ['port_thermistor_R3_1','port_thermistor_R3_2']],
+        ['port_amp_minus', 'port_DC_source_minus'],
+        ['port_amp_plus', ['port_thermistor_common_1','port_thermistor_common_2']],
+        ['port_volt_minus', ['port_thermistor_common_1','port_thermistor_common_2']],
+        ['port_volt_plus', ['port_thermistor_R3_1','port_thermistor_R3_2']]        
+      ];
+
+      //В альтернативном варианте подключения отзеркалены относитьельно портов терморезистора
+      //Т.е. провода слева поменялись с проводами справа
+      const semiconductorCircuit2alt = [
+        ['port_DC_source_plus', ['port_thermistor_common_1','port_thermistor_common_2']],
+        ['port_amp_minus', 'port_DC_source_minus'],
+        ['port_amp_plus', ['port_thermistor_R3_1','port_thermistor_R3_2']],
+        ['port_volt_minus', ['port_thermistor_R3_1','port_thermistor_R3_2']],
+        ['port_volt_plus', ['port_thermistor_common_1','port_thermistor_common_2']]        
+      ];
+      //=============================================== КОНЕЦ ==================================
+
+      const allPresentMetal = checkRequirements(metalCircuit1) ||
+                              checkRequirements(metalCircuit2) ||
+                              checkRequirements(metalCircuit1alt) ||
+                              checkRequirements(metalCircuit2alt);
       
-      const allPresentSemiconductor = checkRequirements(requiredPairsSemiconductor);
+      const allPresentSemiconductor = checkRequirements(semiconductorCircuit1) ||
+                                      checkRequirements(semiconductorCircuit2) ||
+                                      checkRequirements(semiconductorCircuit1alt) ||
+                                      checkRequirements(semiconductorCircuit2alt);
 
       if (allPresentMetal) {
         circuitValid.value = true;
