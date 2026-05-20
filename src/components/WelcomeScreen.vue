@@ -111,7 +111,7 @@ function handleClose() {
   display: flex;
   justify-content: center;
   min-height: 100px;
-  background-image: url('public/nstu_logo.png');
+  background-image: url('/nstu_logo.png');
   background-size: contain; /* Растянуть, чтобы заполнить весь div */
   background-position: center; /* Центрировать картинку */
   background-repeat: no-repeat; /* Не повторять */
