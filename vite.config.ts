@@ -9,8 +9,8 @@ export default defineConfig({
         assetsDir: 'assets',
         rollupOptions: {
             output: {
-                manualChunks: {
-                    three: ['three']
+                manualChunks: (id) => {
+                    if (id.includes('three')) return 'three'
                 }
             }
         },
